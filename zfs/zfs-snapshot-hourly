@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# set PATH
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# set filesystem name
+ZFS_FS="naspool/data"
+
+# run snapshot
+zfs-auto-snapshot.sh --quiet --syslog --label=hourly --keep=24 "$ZFS_FS"
