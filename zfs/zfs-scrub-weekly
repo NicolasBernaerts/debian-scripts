@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# set PATH
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# set pool name
+ZFS_POOL="naspool"
+
+# start scrub
+zpool scrub "$ZFS_POOL"
