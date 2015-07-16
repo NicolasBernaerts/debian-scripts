@@ -6,6 +6,7 @@
 # 01/05/2012 - V1.2 - Use mktemp, pushd & popd
 # 08/05/2012 - V1.3 - Change mp3 compression to CBR to solve some smartphone compatibility (thanks to Luca Mancino)
 # 01/08/2012 - V1.4 - Add PATH definition to avoid any problem (thanks to Christopher Wolff)
+# 16/07/2015 - V1.5 - Handle natively GSM WAV (thanks to Michael Munger)
 
 # set PATH
 PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -51,19 +52,22 @@ else
   # convert the base64 file to a wav file
   dos2unix -o stream.part3.wav.base64
   base64 -di stream.part3.wav.base64 > stream.part3.wav
+
+  # convert wave file (GSM encoded or not) to PCM wav file
+  sox stream.part3.wav -s stream.part3-pcm.wav
  
-  # convert wav file to mp3 file
+  # convert PCM wav file to mp3 file
   # -b 24 is using CBR, giving better compatibility on smartphones (you can use -b 32 to increase quality)
   # -V 2 is using VBR, a good compromise between quality and size for voice audio files
-  lame -m m -b 24 stream.part3.wav stream.part3.mp3
+  lame -m m -b 24 stream.part3-pcm.wav stream.part3.mp3
  
   # convert back mp3 to base64 file
   base64 stream.part3.mp3 > stream.part3.mp3.base64
  
   # generate the new mp3 attachment header
-  # change Type: audio/x-wav to Type: audio/mpeg
-  # change name="msg----.wav" to name="msg----.mp3"
-  sed 's/x-wav/mpeg/g' stream.part3.wav.head | sed 's/.wav/.mp3/g' > stream.part3.mp3.head
+  # change Type: audio/x-wav or audio/x-WAV to Type: audio/mpeg
+  # change name="msg----.wav" or name="msg----.WAV" to name="msg----.mp3"
+  sed 's/x-[wW][aA][vV]/mpeg/g' stream.part3.wav.head | sed 's/.[wW][aA][vV]/.mp3/g' > stream.part3.mp3.head
  
   # generate first part of mail body, converting it to LF only
   mv stream.part stream.new
