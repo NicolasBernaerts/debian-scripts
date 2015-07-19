@@ -1,4 +1,4 @@
-Asterisk scripts
+**Asterisk scripts**
 
 These scripts are used by Asterisk setup on a Debian server.
 
