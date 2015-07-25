@@ -35,9 +35,9 @@ DYN_POST="$DYN_LOGIN"
 DYN_CHECK="https://account.dyn.com/"
 
 # temporary files
-TMP_LOG=`mktemp -t dyndns-XXXXXXXX.log`
-TMP_EMAIL=`mktemp -t dyndns-XXXXXXXX.email`
-TMP_COOKIES=`mktemp -t dyndns-XXXXXXXX.cookie`
+TMP_LOG=$(mktemp -t dyndns-XXXXXXXX.log)
+TMP_EMAIL=$(mktemp -t dyndns-XXXXXXXX.email)
+TMP_COOKIES=$(mktemp -t dyndns-XXXXXXXX.cookie)
 
 # ------------------------------------------
 #     Connect to dyndns account page
@@ -52,7 +52,7 @@ curl -b $TMP_COOKIES -c $TMP_COOKIES -Ikso "$DST" -A "$DYN_UA" --url "$DYN_LOGIN
 
 # fetching UID
 echo "Fetching UID..." >> $TMP_LOG
-VALUE=`curl -b $TMP_COOKIES -c $TMP_COOKIES -kso - -A "$DYN_UA" --url "$DYN_LOGIN" | grep -m 1 "multiform" | cut -d"'" -f 6`
+VALUE=$(curl -b $TMP_COOKIES -c $TMP_COOKIES -kso - -A "$DYN_UA" --url "$DYN_LOGIN" | grep -m 1 "multiform" | cut -d"'" -f 6)
 
 # posting data
 echo "Read UID as '$VALUE' - posting data..." >> $TMP_LOG
