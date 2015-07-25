@@ -1,0 +1,8 @@
+#!/bin/bash
+# weekly connexion to dyndns web site 
+
+# set PATH
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# connect to your dyndns account
+dyndns-web-connect yourlogin yourpassword
