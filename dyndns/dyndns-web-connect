@@ -1,0 +1,99 @@
+#!/bin/bash
+# --------------------------------------------------------
+# Script to connect to dyndns web site
+# It should be run every week to be compatible
+# with dyn.com new policy for free accounts
+# Based on http://blog.stuart.shelton.me/archives/1024 
+#
+# Parameters :
+#  $1 - Login
+#  $2 - Password
+#
+#  Revision history :
+#   06/10/2013, V1.0 - Creation by N. Bernaerts
+# --------------------------------------------------------
+
+# ---------- Beginning of user defined parameters -------------
+# address where the mail should be sent
+# keep it empty if you don't want notification mail
+MAIL_DEST=""
+# name of the email sender (whatever you want)
+MAIL_FROM="Dyndns web script"
+# subject of the mail
+MAIL_SUBJ="Login to dyndns.org for"
+# ---------------- End of user parameters ---------------------
+
+# setup
+DYN_ACCOUNT="$1"
+DYN_PASSWORD="$2"
+
+# parameters for dyndns login
+DYN_LANGAGE="en-gb"
+DYN_UA="Mozilla/5.0 (Windows NT 6.0) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/13.0.782.112 Safari/535.1"
+DYN_LOGIN="https://account.dyn.com/entrance/"
+DYN_POST="$DYN_LOGIN"
+DYN_CHECK="https://account.dyn.com/"
+
+# temporary files
+TMP_LOG=`mktemp -t dyndns-XXXXXXXX.log`
+TMP_EMAIL=`mktemp -t dyndns-XXXXXXXX.email`
+TMP_COOKIES=`mktemp -t dyndns-XXXXXXXX.cookie`
+
+# ------------------------------------------
+#     Connect to dyndns account page
+# ------------------------------------------
+
+# init log file
+echo "Account $DYN_ACCOUNT" > $TMP_LOG 
+
+# fetching initial headers
+echo "Fetching initial headers to pre-load cookies..." >> $TMP_LOG
+curl -b $TMP_COOKIES -c $TMP_COOKIES -Ikso "$DST" -A "$DYN_UA" --url "$DYN_LOGIN"
+
+# fetching UID
+echo "Fetching UID..." >> $TMP_LOG
+VALUE=`curl -b $TMP_COOKIES -c $TMP_COOKIES -kso - -A "$DYN_UA" --url "$DYN_LOGIN" | grep -m 1 "multiform" | cut -d"'" -f 6`
+
+# posting data
+echo "Read UID as '$VALUE' - posting data..." >> $TMP_LOG
+curl -b $TMP_COOKIES -c $TMP_COOKIES -d "username=$DYN_ACCOUNT" -d "password=$DYN_PASSWORD" -d "iov_id" -d "multiform=$VALUE" -e "$DYN_LOGIN" -kso "$DST" -A "$DYN_UA" --url "$DYN_POST"
+
+# verifying result
+echo "Response received - verifying result..." >> $TMP_LOG
+curl -b $TMP_COOKIES -c $TMP_COOKIES -e "$DYN_POST" -kso - -A "$DYN_UA" -H "Accept-Language:$DYN_LANGAGE" --url "$DYN_CHECK" | grep -qE "<span>(Welcome|Hi)&nbsp;<b>$DYN_ACCOUNT</b></span>" && RESULT="Success" || { RESULT="Failed"; }
+
+# display & log result
+MESSAGE="$RESULT while connecting to $DYN_ACCOUNT account"
+echo $MESSAGE
+echo $MESSAGE >> $TMP_LOG
+logger $MESSAGE
+
+# ------------------------------------------
+#        Send notification mail
+# ------------------------------------------
+
+if [ "$MAIL_DEST" != "" ]
+then
+  # prepare the mail body
+  echo "to:$MAIL_DEST" > $TMP_EMAIL
+  echo "from:$MAIL_FROM" >> $TMP_EMAIL
+  echo "subject:$RESULT - $MAIL_SUBJ $DYN_ACCOUNT" >> $TMP_EMAIL
+
+  # append the declaration log to the mail body
+  echo "$MESSAGE" >> $TMP_EMAIL
+  echo "" >> $TMP_EMAIL
+  echo "------------ log -------------" >> $TMP_EMAIL
+  echo "" >> $TMP_EMAIL
+  cat $TMP_LOG >> $TMP_EMAIL
+
+  # send the mail
+  cat $TMP_EMAIL | sendmail -t
+fi
+
+# ------------------------------------------
+#        Cleanup temporary files
+# ------------------------------------------
+
+rm $TMP_LOG
+rm $TMP_COOKIES
+rm $TMP_EMAIL
