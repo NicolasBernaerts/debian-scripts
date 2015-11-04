@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 # Asterisk voicemail attachment conversion script, including voice recognition 
 # Use Voice Recognition Engine provided by Google API
 #
