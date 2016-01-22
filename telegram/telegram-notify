@@ -1,0 +1,101 @@
+#!/bin/sh
+# ---------------------------------------------------
+#  Send notofication to a telegram account thru
+#  a bot account
+#
+#  Configuration is stored in /etc/telegram-notify.conf
+#
+#  Depends on curl and perl
+#    
+#  Parameters :
+#    --text "text to display"
+#    --file "/path/of/file/to/display"
+#    --photo "/path/of/photo/to/display"
+#
+#  Revision history :
+#    10/01/2016, V1.0 - Creation by N. Bernaerts
+# ---------------------------------------------------
+
+DISPLAY_TXT=""
+DISPLAY_PIX=""
+
+# -------------------------------------------------------
+#   Check tools availability
+# -------------------------------------------------------
+
+command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1; }
+command -v perl >/dev/null 2>&1 || { echo "[Error] Please install perl"; exit 1; }
+
+# -------------------------------------------------------
+#   Read configuration
+# -------------------------------------------------------
+
+# Configuration file
+FILE_CONF="/etc/telegram-notify.conf"
+
+# check configuration file
+[ -f "${FILE_CONF}" ] || { echo "[Error] Please install ${FILE_CONF}"; exit 1; }
+
+# Load configuration
+API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
+USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
+
+# check configuration parameters
+[ "${API_KEY}" = "" ] && { echo "[Error] Please setup api-key in ${FILE_CONF}"; exit 1; }
+[ "${USER_ID}" = "" ] && { echo "[Error] Please setup user-id in ${FILE_CONF}"; exit 1; }
+
+# -------------------------------------------------------
+#   Loop to load arguments
+# -------------------------------------------------------
+
+while test $# -gt 0
+do
+  case "$1" in
+
+    "--text") 
+      shift
+      DISPLAY_TXT="$1"
+      shift
+      ;;
+
+    "--file") 
+      shift
+      DISPLAY_TXT="$(cat $1)"
+      shift
+      ;;
+
+    "--photo") 
+      shift
+      DISPLAY_PIX="$1"
+      shift
+      ;;
+
+    *)
+      ;;
+  esac
+done
+
+# if needed, URL encode the text
+[ "${DISPLAY_TXT}" != "" ] && DISPLAY_TXT="$(echo -n "$DISPLAY_TXT" | perl -MURI::Escape -ne 'print uri_escape($_)')"
+
+# -------------------------------------------------------
+#   Notification
+# -------------------------------------------------------
+
+#   Photo and caption
+if [ "${DISPLAY_PIX}" != "" ]
+then
+  curl -s -X POST "https://api.telegram.org/bot${API_KEY}/sendPhoto" -F chat_id=${USER_ID} -F caption="${DISPLAY_TXT}" -F photo="@${DISPLAY_PIX}"
+
+#   Text only
+elif [ "${DISPLAY_TXT}" != "" ]
+then
+  curl --data parse_mode=markdown --data chat_id=${USER_ID} --data "text=${DISPLAY_TXT}"  "https://api.telegram.org/bot${API_KEY}/sendMessage"
+
+#   Nothing, error
+else
+  echo "[Error] Nothing to notify"
+fi
+
+# end
+exit 0
