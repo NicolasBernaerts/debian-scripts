@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ---------------------------------------------------
 #  Send notofication to a telegram account thru
 #  a bot account
@@ -8,23 +8,28 @@
 #  Depends on curl and perl
 #    
 #  Parameters :
-#    --text "text to display"
-#    --file "/path/of/file/to/display"
-#    --photo "/path/of/photo/to/display"
+#    --success  
+#    --error  
+#    --question  
+#    --title  TextOfTitle
+#    --text TextOfMessage
+#    --file /path/of/file/to/display
+#    --photo /path/of/photo/to/display
 #
 #  Revision history :
 #    10/01/2016, V1.0 - Creation by N. Bernaerts
+#    22/01/2016, V1.1 - Handle emoticons
 # ---------------------------------------------------
 
-DISPLAY_TXT=""
-DISPLAY_PIX=""
+DISPLAY_TEXT=""
+DISPLAY_PICT=""
+DISPLAY_ICON=""
 
 # -------------------------------------------------------
 #   Check tools availability
 # -------------------------------------------------------
 
 command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1; }
-command -v perl >/dev/null 2>&1 || { echo "[Error] Please install perl"; exit 1; }
 
 # -------------------------------------------------------
 #   Read configuration
@@ -52,21 +57,42 @@ while test $# -gt 0
 do
   case "$1" in
 
+    "--success") 
+      DISPLAY_ICON=$'\U00002705'
+      shift
+      ;;
+
+    "--error") 
+      DISPLAY_ICON=$'\U0000274C'
+      shift
+      ;;
+
+    "--question") 
+      DISPLAY_ICON=$'\U00002753'
+      shift
+      ;;
+
     "--text") 
       shift
-      DISPLAY_TXT="$1"
+      DISPLAY_TEXT="$1"
+      shift
+      ;;
+
+    "--title") 
+      shift
+      DISPLAY_TITLE="*$1*"
       shift
       ;;
 
     "--file") 
       shift
-      DISPLAY_TXT="$(cat $1)"
+      DISPLAY_TEXT="$(cat $1)"
       shift
       ;;
 
     "--photo") 
       shift
-      DISPLAY_PIX="$1"
+      DISPLAY_PICT="$1"
       shift
       ;;
 
@@ -75,22 +101,32 @@ do
   esac
 done
 
-# if needed, URL encode the text
-[ "${DISPLAY_TXT}" != "" ] && DISPLAY_TXT="$(echo -n "$DISPLAY_TXT" | perl -MURI::Escape -ne 'print uri_escape($_)')"
+# -------------------------------------------------------
+#   String preparation : space and line break
+# -------------------------------------------------------
+
+# if icon defined, add a space
+[ "${DISPLAY_ICON}" != "" ] && DISPLAY_ICON="${DISPLAY_ICON} "
+
+# if title defined, add HTML line break
+[ "${DISPLAY_TITLE}" != "" ] && DISPLAY_TITLE="${DISPLAY_TITLE} %0A"
+
+# if text defined, replace \n by HTML line break
+[ "${DISPLAY_TEXT}" != "" ] && DISPLAY_TEXT="$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')"
 
 # -------------------------------------------------------
 #   Notification
 # -------------------------------------------------------
 
-#   Photo and caption
-if [ "${DISPLAY_PIX}" != "" ]
+#   Photo (with icon and caption)
+if [ "${DISPLAY_PICT}" != "" ]
 then
-  curl -s -X POST "https://api.telegram.org/bot${API_KEY}/sendPhoto" -F chat_id=${USER_ID} -F caption="${DISPLAY_TXT}" -F photo="@${DISPLAY_PIX}"
+  curl -s -X POST "https://api.telegram.org/bot${API_KEY}/sendPhoto" -F chat_id=${USER_ID} -F caption="${DISPLAY_ICON}${DISPLAY_TEXT}" -F photo="@${DISPLAY_PICT}"
 
-#   Text only
-elif [ "${DISPLAY_TXT}" != "" ]
+#   Text (with icon and title)
+elif [ "${DISPLAY_TEXT}" != "" ]
 then
-  curl --data parse_mode=markdown --data chat_id=${USER_ID} --data "text=${DISPLAY_TXT}"  "https://api.telegram.org/bot${API_KEY}/sendMessage"
+  curl --data parse_mode=markdown --data chat_id=${USER_ID} --data text="${DISPLAY_ICON}${DISPLAY_TITLE}${DISPLAY_TEXT}"  "https://api.telegram.org/bot${API_KEY}/sendMessage"
 
 #   Nothing, error
 else
