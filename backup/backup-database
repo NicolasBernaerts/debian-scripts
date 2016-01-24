@@ -1,0 +1,44 @@
+#!/bin/bash
+# --------------------------------------------------------
+# Script to backup server databases
+#
+# Parameters :
+#  $1 - system log header
+#  $2 - Backup log file
+#  $3 - Error log file
+#
+#  Revision history :
+#   08/06/2013, V1.0 - Creation by N. Bernaerts
+#   08/11/2013, V1.2 - Change parameters
+# --------------------------------------------------------
+
+# ---------- Beginning of user defined parameters -------------
+DATABASE_PATH="/.../backup/database"
+DATABASE_LIST="/.../database.list"
+DATABASE_PASSWD="..."
+# ---------------- End of user parameters ---------------------
+
+# set PATH as it is not set for udev scripts
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+
+# if needed, create backup directory
+mkdir -p $DATABASE_PATH
+
+# loop thru the backup list
+while read line
+do
+  # get current database label
+  DATABASE_LABEL=$(echo ${line} | cut -d';' -f1)
+
+  # get current database name
+  DATABASE_NAME=$(echo ${line} | cut -d';' -f2)
+
+  # log the backup
+  logger "$1 - Success - Database $DATABASE_LABEL"
+
+  # database dump
+  mysqldump -u root -p$DATABASE_PASSWD $DATABASE_NAME > $DATABASE_PATH/$DATABASE_NAME.sql
+done < $DATABASE_LIST
+
+# end
+exit
