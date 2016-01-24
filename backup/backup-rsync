@@ -1,0 +1,119 @@
+#!/bin/bash
+# --------------------------------------------------------
+# Script to backup server databases
+#
+# This script uses the following tools :
+#  * rsync
+#
+# Parameters :
+#  $1 - Target
+#  $2 - system log header
+#  $3 - Backup log file
+#  $4 - Error log file
+#
+#  Revision history :
+#   08/06/2013, V1.0 - Creation by N. Bernaerts
+#   04/11/2013, V1.1 - Handle error cases & log
+#   08/11/2013, V1.2 - Change parameters
+# --------------------------------------------------------
+
+# ---------- Beginning of user defined parameters -------------
+
+# place where target list are stored
+PATH_TARGET="/..."
+
+# ---------------- End of user parameters ---------------------
+
+# set PATH (in case)
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+
+# retreive parameters
+BCK_TARGET="$1"
+LOG_HEADER="$2"
+LOG_BACKUP="$3"
+LOG_ERROR="$4"
+
+# temporary files
+TMP_PASSWD="/tmp/rsync-current.pwd"
+LOG_CURRENT="/tmp/rsync-current.log"
+
+# set data files for backup target
+BACKUP_LIST="${PATH_TARGET}/rsync-${BCK_TARGET}.list"
+BACKUP_DATA="${PATH_TARGET}/rsync-${BCK_TARGET}.data"
+
+# set backup parameters
+BACKUP_SERVER="$(cat ${BACKUP_DATA} | grep "server="   | cut -d'=' -f2-)"
+BACKUP_PORT="$(cat ${BACKUP_DATA}   | grep "port="     | cut -d'=' -f2-)"
+BACKUP_MODULE="$(cat ${BACKUP_DATA} | grep "module="   | cut -d'=' -f2-)"
+BACKUP_USER="$(cat ${BACKUP_DATA}   | grep "user="     | cut -d'=' -f2-)"
+BACKUP_PASSWD="$(cat ${BACKUP_DATA} | grep "password=" | cut -d'=' -f2-)"
+BACKUP_OPTION="$(cat ${BACKUP_DATA} | grep "option="   | cut -d'=' -f2-)"
+
+# create password file
+echo $BACKUP_PASSWD > $TMP_PASSWD
+chmod 0700 $TMP_PASSWD
+
+# loop thru the backup list
+while read line
+do
+  # get current backup label
+  DIRECTORY_LABEL=$(echo ${line} | cut -d';' -f1)
+
+  # get current backup directory
+  DIRECTORY_PATH=$(echo ${line} | cut -d';' -f2)
+
+  # get current exclusion list
+  DIRECTORY_EXCLUDE=$(echo ${line} | cut -d';' -f3)
+
+  # if backup dir exists, start the backup
+  if [ -d "$DIRECTORY_PATH" ]
+  then
+    # beginning of backup
+    echo "--------- $BCK_TARGET : $DIRECTORY_PATH ---------" >> $LOG_BACKUP
+
+    # backup the directory structure
+    if [ "$DIRECTORY_EXCLUDE" != "" ]
+      then rsync $BACKUP_OPTION --exclude="$DIRECTORY_EXCLUDE" --password-file=$TMP_PASSWD $DIRECTORY_PATH rsync://$BACKUP_USER@$BACKUP_SERVER:$BACKUP_PORT/$BACKUP_MODULE > $LOG_CURRENT;
+      else rsync $BACKUP_OPTION --password-file=$TMP_PASSWD $DIRECTORY_PATH rsync://$BACKUP_USER@$BACKUP_SERVER:$BACKUP_PORT/$BACKUP_MODULE > $LOG_CURRENT;
+    fi
+
+    # count numer of lines in the log
+    LOG_LINE=$(wc -l "$LOG_CURRENT" | cut -d' ' -f1)
+
+    # if current log contains more than 10 lines, log 5 first and 5 last lines
+    if [ "$LOG_LINE" -gt "10"  ]
+    then
+       logger "$LOG_HEADER - Success - $BCK_TARGET : $DIRECTORY_PATH"
+       head -n 5 $LOG_CURRENT >> $LOG_BACKUP
+       echo "..." >> $LOG_BACKUP
+       tail -n 5 $LOG_CURRENT >> $LOG_BACKUP
+
+    # else if current log contains less than 10 lines, log all lines
+    elif [ "$LOG_LINE" -gt "0"  ]
+    then
+       logger "$LOG_HEADER - Success - $BCK_TARGET : $DIRECTORY_PATH"
+       cat $LOG_CURRENT >> $LOG_BACKUP
+
+    # else if current log is empty, log error
+    else
+       logger "$LOG_HEADER - Error - $BCK_TARGET : $DIRECTORY_PATH"
+       echo "Error : Server $BACKUP_SERVER did not respond to backup $DIRECTORY_PATH" >> $LOG_BACKUP
+       echo "Error" >> $LOG_ERROR
+    fi
+
+    # end of backup
+    echo "" >> $LOG_BACKUP
+
+  # else, directory not present
+  else
+  logger "$LOG_HEADER - Error - $BCK_TARGET : Absent directory $DIRECTORY_PATH"
+  echo "Error" >> $LOG_ERROR
+
+  fi
+done < $BACKUP_LIST
+
+# remove temporary files
+rm $TMP_PASSWD
+
+# end
+exit
