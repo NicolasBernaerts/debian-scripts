@@ -1,0 +1,26 @@
+#!/bin/bash
+# Remote TTY monitoring script
+# Check local TTY emulation
+# If broken for any reason, remount remote TTY with socat
+# Remote TTY configured in /etc/remote-tty.conf
+#
+# Revision history :
+# 18/02/2016 - V1.0 - Creation by N. Bernaerts
+
+# configuration
+TTY_CONF="/etc/remote-tty.conf"
+
+# loop thru configuration file
+while read LINE; do
+  if [ "$LINE" != "" ]
+  then
+    # get variables
+    REMOTE_IP=$(echo "$LINE" | cut -d';' -f1)
+    REMOTE_PORT=$(echo "$LINE" | cut -d';' -f2)
+    LOCAL_TTY=$(echo "$LINE" | cut -d';' -f3)
+
+    # test local TTY file as a caracter file
+    # if absent, declare virtual TTY port from remote device
+    [ ! -c "/dev/${LOCAL_TTY}" ] && socat pty,raw,echo=0,link=/dev/${LOCAL_TTY} tcp:${REMOTE_IP}:${REMOTE_PORT} &
+  fi
+done < $TTY_CONF
