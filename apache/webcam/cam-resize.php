@@ -22,5 +22,4 @@ header("Content-type: image/{$format}");
  
 // send file conversion result
 passthru("convert -quality {$quality} -geometry '{$width}x{$height}' {$url_cam} {$format}:-");
-?>
-
+?
