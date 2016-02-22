@@ -1,0 +1,14 @@
+# ---------------------------------------------------------------------
+# Example of URL rewriting for realtime webcam size & quality downscale
+# ---------------------------------------------------------------------
+
+...
+
+# enable URL rewriting
+RewriteEngine On
+
+# declaration of webcams available thru internet
+RewriteRule ^cams\/cam01_([0-9]+)_([0-9]+)_([0-9]+)\.([a-z]+)$ scripts/cam-resize.php?cam=192.168.0.134\/cgi\/jpg\/image.cgi&width=$1&height=$2&quality=$3&format=$4
+RewriteRule ^cams\/cam02_([0-9]+)_([0-9]+)_([0-9]+)\.([a-z]+)$ scripts/cam-resize.php?cam=192.168.0.202\/image\/jpg.cgi&width=$1&height=$2&quality=$3&format=$4
+
+...
