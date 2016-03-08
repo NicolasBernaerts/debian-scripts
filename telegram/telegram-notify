@@ -1,11 +1,11 @@
 #!/bin/bash
 # ---------------------------------------------------
-#  Send notofication to a telegram account thru
+#  Send notification to a telegram account thru
 #  a bot account
 #
 #  Configuration is stored in /etc/telegram-notify.conf
 #
-#  Depends on curl and perl
+#  Depends on curl
 #    
 #  Parameters :
 #    --success  
@@ -128,9 +128,9 @@ elif [ "${DISPLAY_TEXT}" != "" ]
 then
   curl --data parse_mode=markdown --data chat_id=${USER_ID} --data text="${DISPLAY_ICON}${DISPLAY_TITLE}${DISPLAY_TEXT}"  "https://api.telegram.org/bot${API_KEY}/sendMessage"
 
-#   Nothing, error
+#   Nothing,
 else
-  echo "[Error] Nothing to notify"
+  echo "[Warning] Nothing to notify"
 fi
 
 # end
