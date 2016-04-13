@@ -54,7 +54,7 @@ else
   base64 -di stream.part3.wav.base64 > stream.part3.wav
 
   # convert wave file (GSM encoded or not) to PCM wav file
-  sox stream.part3.wav -s stream.part3-pcm.wav
+  sox stream.part3.wav stream.part3-pcm.wav
  
   # convert PCM wav file to mp3 file
   # -b 24 is using CBR, giving better compatibility on smartphones (you can use -b 32 to increase quality)
