@@ -1,0 +1,33 @@
+#!/bin/bash
+# ---------------------------------------------------
+#  Install ReadyNAS 102 munin plugin
+#  for SNMP supervision
+#
+#  Configuration is stored in /etc/telegram-notify.conf
+#
+#  Depends on snmp
+#    
+#  Revision history :
+#    10/05/2016, V1.0 - Creation by N. Bernaerts
+# ---------------------------------------------------
+
+# NAS IP
+NAS_IP="192.168.x.x"
+
+# install package
+apt-get install snmp
+
+# install plugins
+wget -O /usr/share/munin/plugins/snmp__readynas102_df https://raw.githubusercontent.com/NicolasBernaerts/munin-plugin/master/snmp__readynas102_df
+wget -O /usr/share/munin/plugins/snmp__readynas102_temperature https://raw.githubusercontent.com/NicolasBernaerts/munin-plugin/master/snmp__readynas102_temperature
+chmod +x /usr/share/munin/plugins/snmp__readynas102_*
+
+# declare plugins
+ln -s /usr/share/munin/plugins/snmp__readynas102_df /etc/munin/plugins/snmp_rn102-sci_readynas102_df
+ln -s /usr/share/munin/plugins/snmp__readynas102_temperature /etc/munin/plugins/snmp_rn102-sci_readynas102_temperature
+
+# retrieve SNMP MIB
+wget --no-check-certificate -O /usr/share/snmp/mibs/READYNASOS-MIB.txt https://${NAS_IP}/READYNASOS-MIB.txt
+
+# restart munin
+service munin-node restart
