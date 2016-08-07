@@ -1,9 +1,6 @@
 #!/bin/bash
 # ---------------------------------------------------
-#  Install ReadyNAS 102 munin plugin
-#  for SNMP supervision
-#
-#  Configuration is stored in /etc/telegram-notify.conf
+#  Install ReadyNAS 102 munin plugin for SNMP supervision
 #
 #  Depends on snmp
 #    
