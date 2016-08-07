@@ -1,29 +1,22 @@
 #!/bin/bash
 # ---------------------------------------------------
-#  Send notification to a telegram account thru
-#  a bot account
-#
+#  Send notification to a telegram account thru a bot account
 #  Configuration is stored in /etc/telegram-notify.conf
-#
-#  Depends on curl
-#    
-#  Parameters :
-#    --success  
-#    --error  
-#    --question  
-#    --title  TextOfTitle
-#    --text TextOfMessage
-#    --file /path/of/file/to/display
-#    --photo /path/of/photo/to/display
+#  Depends on curl 
 #
 #  Revision history :
 #    10/01/2016, V1.0 - Creation by N. Bernaerts
 #    22/01/2016, V1.1 - Handle emoticons
+#    15/08/2016, V1.2 - Add API key and User ID parameters
+#                       Remove dependency to PERL
 # ---------------------------------------------------
 
 DISPLAY_TEXT=""
 DISPLAY_PICT=""
 DISPLAY_ICON=""
+
+# Configuration file
+FILE_CONF="/etc/telegram-notify.conf"
 
 # -------------------------------------------------------
 #   Check tools availability
@@ -32,74 +25,54 @@ DISPLAY_ICON=""
 command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1; }
 
 # -------------------------------------------------------
-#   Read configuration
-# -------------------------------------------------------
-
-# Configuration file
-FILE_CONF="/etc/telegram-notify.conf"
-
-# check configuration file
-[ -f "${FILE_CONF}" ] || { echo "[Error] Please install ${FILE_CONF}"; exit 1; }
-
-# Load configuration
-API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
-USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
-
-# check configuration parameters
-[ "${API_KEY}" = "" ] && { echo "[Error] Please setup api-key in ${FILE_CONF}"; exit 1; }
-[ "${USER_ID}" = "" ] && { echo "[Error] Please setup user-id in ${FILE_CONF}"; exit 1; }
-
-# -------------------------------------------------------
 #   Loop to load arguments
 # -------------------------------------------------------
 
+# if no argument, display help
+if [ $# -eq 0 ] 
+then
+  echo "Tool to send a telegram message."
+  echo "Parameters are :"
+  echo "  --title        Title of the message"
+  echo "  --text         Text of the message"
+  echo "  --file         File containing text of the message"
+  echo "  --photo        Image to display"
+  echo "  --success      Add a success icon"
+  echo "  --error        Add an error icon"
+  echo "  --question     Add a question mark icon"
+  echo "  --user         User ID to send the message (if not in ${FILE_CONF})"
+  echo "  --key          API Key of your telegram bot (if not in ${FILE_CONF})"
+  exit
+fi
+
+# loop to retrieve arguments
 while test $# -gt 0
 do
   case "$1" in
-
-    "--success") 
-      DISPLAY_ICON=$'\U00002705'
-      shift
-      ;;
-
-    "--error") 
-      DISPLAY_ICON=$'\U0000274C'
-      shift
-      ;;
-
-    "--question") 
-      DISPLAY_ICON=$'\U00002753'
-      shift
-      ;;
-
-    "--text") 
-      shift
-      DISPLAY_TEXT="$1"
-      shift
-      ;;
-
-    "--title") 
-      shift
-      DISPLAY_TITLE="*$1*"
-      shift
-      ;;
-
-    "--file") 
-      shift
-      DISPLAY_TEXT="$(cat $1)"
-      shift
-      ;;
-
-    "--photo") 
-      shift
-      DISPLAY_PICT="$1"
-      shift
-      ;;
-
-    *)
-      ;;
+    "--title") shift; DISPLAY_TITLE="*$1*"; shift; ;;
+    "--text") shift; DISPLAY_TEXT="$1"; shift; ;;
+    "--file") shift; DISPLAY_TEXT="$(cat $1)"; shift; ;;
+    "--photo") shift; DISPLAY_PICT="$1"; shift; ;;
+    "--success") DISPLAY_ICON=$'\U00002705'; shift; ;;
+    "--error") DISPLAY_ICON=$'\U0000274C'; shift; ;;
+    "--question") DISPLAY_ICON=$'\U00002753'; shift; ;;
+    "--user") shift; USER_ID="$1"; shift; ;;
+    "--key") shift; API_KEY="$1"; shift; ;;
+    *) ;;
   esac
 done
+
+# -------------------------------------------------------
+#   Read configuration
+# -------------------------------------------------------
+
+# if needed, load from configuration file
+[ -f "${FILE_CONF}" -a "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
+[ -f "${FILE_CONF}" -a "${USER_ID}" = "" ] && USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
+
+# check API key and User ID
+[ "${API_KEY}" = "" ] && { echo "[Error] Please provide API key or set it in ${FILE_CONF}"; exit 1; }
+[ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
 
 # -------------------------------------------------------
 #   String preparation : space and line break
@@ -118,19 +91,22 @@ done
 #   Notification
 # -------------------------------------------------------
 
-#   Photo (with icon and caption)
+# if photo defined, display it with icon and caption
 if [ "${DISPLAY_PICT}" != "" ]
 then
+  # display image
   curl -s -X POST "https://api.telegram.org/bot${API_KEY}/sendPhoto" -F chat_id=${USER_ID} -F caption="${DISPLAY_ICON}${DISPLAY_TEXT}" -F photo="@${DISPLAY_PICT}"
 
-#   Text (with icon and title)
+# else, if text is defined, display it with icon and title
 elif [ "${DISPLAY_TEXT}" != "" ]
 then
+  # display text message
   curl --data parse_mode=markdown --data chat_id=${USER_ID} --data text="${DISPLAY_ICON}${DISPLAY_TITLE}${DISPLAY_TEXT}"  "https://api.telegram.org/bot${API_KEY}/sendMessage"
 
-#   Nothing,
+#  else, nothing, error
 else
-  echo "[Warning] Nothing to notify"
+  # error message
+  echo "[Error] Nothing to notify"
 fi
 
 # end
