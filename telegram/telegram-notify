@@ -7,13 +7,17 @@
 #  Revision history :
 #    10/01/2016, V1.0 - Creation by N. Bernaerts
 #    22/01/2016, V1.1 - Handle emoticons
-#    15/08/2016, V1.2 - Add API key and User ID parameters
+#    06/08/2016, V1.2 - Add API key and User ID parameters
 #                       Remove dependency to PERL
+#    08/08/2016, V1.3 - Add --html and --silent options
 # ---------------------------------------------------
 
+# initialise variables
 DISPLAY_TEXT=""
 DISPLAY_PICT=""
 DISPLAY_ICON=""
+DISPLAY_MODE="markdown"
+DISPLAY_SILENT="false"
 
 # Configuration file
 FILE_CONF="/etc/telegram-notify.conf"
@@ -40,8 +44,10 @@ then
   echo "  --success      Add a success icon"
   echo "  --error        Add an error icon"
   echo "  --question     Add a question mark icon"
-  echo "  --user         User ID to send the message (if not in ${FILE_CONF})"
-  echo "  --key          API Key of your telegram bot (if not in ${FILE_CONF})"
+  echo "  --html         Use HTML mode for text content"
+  echo "  --silent       Send message in silent mode (no user notification)"
+  echo "  --user         User ID to send the message (replaces user-id in ${FILE_CONF})"
+  echo "  --key          API Key of your telegram bot (replaces api-key in ${FILE_CONF})"
   exit
 fi
 
@@ -56,6 +62,8 @@ do
     "--success") DISPLAY_ICON=$'\U00002705'; shift; ;;
     "--error") DISPLAY_ICON=$'\U0000274C'; shift; ;;
     "--question") DISPLAY_ICON=$'\U00002753'; shift; ;;
+    "--html") DISPLAY_MODE="html"; shift; ;;
+    "--silent") DISPLAY_SILENT="true"; shift; ;;
     "--user") shift; USER_ID="$1"; shift; ;;
     "--key") shift; API_KEY="$1"; shift; ;;
     *) ;;
@@ -95,13 +103,13 @@ done
 if [ "${DISPLAY_PICT}" != "" ]
 then
   # display image
-  curl -s -X POST "https://api.telegram.org/bot${API_KEY}/sendPhoto" -F chat_id=${USER_ID} -F caption="${DISPLAY_ICON}${DISPLAY_TEXT}" -F photo="@${DISPLAY_PICT}"
+  curl -s -X POST -F chat_id=${USER_ID} -F disable_notification=${DISPLAY_SILENT} -F caption="${DISPLAY_ICON}${DISPLAY_TEXT}" -F photo="@${DISPLAY_PICT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto" 
 
 # else, if text is defined, display it with icon and title
 elif [ "${DISPLAY_TEXT}" != "" ]
 then
   # display text message
-  curl --data parse_mode=markdown --data chat_id=${USER_ID} --data text="${DISPLAY_ICON}${DISPLAY_TITLE}${DISPLAY_TEXT}"  "https://api.telegram.org/bot${API_KEY}/sendMessage"
+  curl --data parse_mode=${DISPLAY_MODE} --data chat_id=${USER_ID} --data text="${DISPLAY_ICON}${DISPLAY_TITLE}${DISPLAY_TEXT}"  "https://api.telegram.org/bot${API_KEY}/sendMessage"
 
 #  else, nothing, error
 else
