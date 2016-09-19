@@ -37,17 +37,17 @@ if [ $# -eq 0 ]
 then
   echo "Tool to send a telegram message."
   echo "Parameters are :"
-  echo "  --title        Title of the message"
-  echo "  --text         Text of the message or file holding the text"
-  echo "  --photo        Image to display"
-  echo "  --document     Document to transfer"
-  echo "  --success      Add a success icon"
-  echo "  --error        Add an error icon"
-  echo "  --question     Add a question mark icon"
-  echo "  --html         Use HTML mode for text content"
-  echo "  --silent       Send message in silent mode (no user notification)"
-  echo "  --user         User ID to send the message (replaces user-id in ${FILE_CONF})"
-  echo "  --key          API Key of your telegram bot (replaces api-key in ${FILE_CONF})"
+  echo "  --title <title>      Title of the message"
+  echo "  --text <text/file>   Text of the message or file path holding the text"
+  echo "  --photo <file>       Image to display"
+  echo "  --document <file>    Document to transfer"
+  echo "  --success            Add a success icon"
+  echo "  --error              Add an error icon"
+  echo "  --question           Add a question mark icon"
+  echo "  --html               Use HTML mode for text content"
+  echo "  --silent             Send message in silent mode (no user notification)"
+  echo "  --user <userid>      User ID to send the message (replaces user-id in ${FILE_CONF})"
+  echo "  --key <key>          API Key of your telegram bot (replaces api-key in ${FILE_CONF})"
   exit
 fi
 
@@ -66,7 +66,7 @@ do
     "--silent") DISPLAY_SILENT="true"; shift; ;;
     "--user") shift; USER_ID="$1"; shift; ;;
     "--key") shift; API_KEY="$1"; shift; ;;
-    *) ;;
+    *) shift; ;;
   esac
 done
 
