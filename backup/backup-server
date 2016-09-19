@@ -81,7 +81,7 @@ sed -i "s/Success/"$'\U00002714'"/g" ${NOTIF_BODY}
 sed -i "s/Error/"$'\U00002716'"/g" ${NOTIF_BODY}
 
 #  Send backup notification thru Telegram
-telegram-notify --${NOTIF_ICON} --title "${NOTIF_SUBJ}" --file ${NOTIF_BODY}
+telegram-notify --${NOTIF_ICON} --title "${NOTIF_SUBJ}" --text ${NOTIF_BODY}
 
 # end
 exit
