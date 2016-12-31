@@ -82,6 +82,9 @@ done
 [ "${API_KEY}" = "" ] && { echo "[Error] Please provide API key or set it in ${FILE_CONF}"; exit 1; }
 [ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
 
+# Telegram API URL
+TELEGRAM_URL="https://api.telegram.org/bot${API_KEY}"
+
 # -------------------------------------------------------
 #   Check for file existence
 # -------------------------------------------------------
@@ -116,19 +119,19 @@ done
 if [ "${PICTURE}" != "" ]
 then
   # display image
-  curl --silent --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${DISPLAY_ICON}${DISPLAY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto" 
+  curl --silent --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${DISPLAY_ICON}${DISPLAY_TEXT}" "${TELEGRAM_URL}/sendPhoto" 
 
 # if document defined, send it with icon and caption
 elif [ "${DOCUMENT}" != "" ]
 then
   # transfer document
-  curl --silent --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${DISPLAY_ICON}${DISPLAY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument" 
+  curl --silent --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${DISPLAY_ICON}${DISPLAY_TEXT}" "${TELEGRAM_URL}/sendDocument" 
 
 # else, if text is defined, display it with icon and title
 elif [ "${DISPLAY_TEXT}" != "" ]
 then
   # display text message
-  curl --silent --data chat_id=${USER_ID} --data disable_notification=${DISPLAY_SILENT} --data parse_mode=${DISPLAY_MODE} --data text="${DISPLAY_ICON}${DISPLAY_TITLE}${DISPLAY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage"
+  curl --silent --data chat_id=${USER_ID} --data disable_notification=${DISPLAY_SILENT} --data parse_mode=${DISPLAY_MODE} --data text="${DISPLAY_ICON}${DISPLAY_TITLE}${DISPLAY_TEXT}" "${TELEGRAM_URL}/sendMessage"
 
 #  else, nothing, error
 else
