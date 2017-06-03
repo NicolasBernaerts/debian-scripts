@@ -2,7 +2,7 @@ This small PHP script provides a simple way to get a Video Camera Wall from a si
 
 Video camera list is in file **cam-wall.lst**. Parameters are :
 
-**camera descrition;image URL;list of wall numbers**
+**camera descrition;camera full URL to get image;wall number1-wall number 2-...**
 
 You can define different camera walls in this configuration file.
 
