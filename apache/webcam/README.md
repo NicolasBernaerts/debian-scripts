@@ -1,8 +1,8 @@
-This small PHP script provides a simple way to get a Video Camera Wall from a simple web browser.
+**cam-wall.php** script provides a simple way to get a Video Camera Wall from a simple web browser.
 
 Video camera list is in file **cam-wall.lst**. Parameters are :
 
-**camera descrition;camera full URL to get image;wall number1-wall number 2-...**
+**camera descrition;camera URL for full size image;camera URL for thumbnail image;wall number1-wall number 2-...**
 
 You can define different camera walls in this configuration file.
 
