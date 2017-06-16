@@ -1,6 +1,7 @@
 <?php
 // ---------------------------------------
 // Webcam image scaling and compression
+// This script handles real time resize and compression
 // Parameters :
 //   cam  - URL of webcam image on the LAN
 //   width - maximum width of resized image
