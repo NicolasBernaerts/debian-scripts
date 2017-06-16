@@ -1,4 +1,14 @@
 <?php
+// ---------------------------------------
+// Webcam image wall display
+// Webcam are described in cam-wall.lst 
+// Parameters :
+//   wall - Wall number to display
+//   cam - index of main cam to display
+//   rate - refresh rate of the wall (in milliseconds)
+// Revision history :
+//   07/06/2017 - V1.0 - Creation by N. Bernaerts
+// ---------------------------------------
 
 // constant
 $rateWall = 5000;
