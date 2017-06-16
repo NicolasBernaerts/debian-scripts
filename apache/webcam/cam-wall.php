@@ -30,8 +30,8 @@ $arrLine = file ("cam-wall.lst");
 foreach ($arrLine as $index => $line) 
 {
 	// extract key, label and url from line
-	$arrParam = explode(";", trim($line), 3);
-	$arrWall  = explode("-", $arrParam[2]);
+	$arrParam = explode(";", trim($line), 4);
+	$arrWall  = explode("-", $arrParam[3]);
 
 	// if camera is in current wall, add to array
 	if (in_array($idxWall, $arrWall))
@@ -39,7 +39,8 @@ foreach ($arrLine as $index => $line)
 		// add cam to cam array
 		$arrCam[$numCam]['key'] = "cam" . $numCam;
 		$arrCam[$numCam]['name'] = $arrParam[0];
-		$arrCam[$numCam]['link'] = $arrParam[1];
+		$arrCam[$numCam]['image'] = $arrParam[1];
+		$arrCam[$numCam]['thumb'] = $arrParam[2];
 
 		// increment cam number
 		$numCam += 1;
@@ -111,7 +112,7 @@ foreach ($arrCam as $index => $cam)
 	echo ("<div class='cam'>");
 	echo ("<div class='text'>" . $cam['name'] . "</div>");
 	echo ("<a href='" . $urlPage . "?wall=" . $idxWall . "&cam=" . $index . "&rate=" . $rateWall . "'>");
-	echo ("<img id='" . $cam['key'] . "' src='" . $cam['link'] . "'>");
+	echo ("<img id='" . $cam['key'] . "' src='" . $cam['thumb'] . "'>");
 	echo ("</a></div>\n");
 }
 
@@ -127,7 +128,7 @@ if ($idxCam != -1)
 	echo ("<div class='live'>");
 	echo ("<div class='text'>" . $arrCam[$idxCam]['name'] . "</div>");
 	echo ("<a href='" . $urlPage . "?wall=" . $idxWall . "&rate=" . $rateWall . "'>");
-	echo ("<img id='live' src='" . $arrCam[$idxCam]['link'] . "'>");
+	echo ("<img id='live' src='" . $arrCam[$idxCam]['image'] . "'>");
 	echo ("</a></div>");
 }
 
