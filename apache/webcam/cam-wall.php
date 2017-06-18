@@ -40,7 +40,7 @@ foreach ($arrLine as $index => $line)
 		$arrCam[$numCam]['key'] = "cam" . $numCam;
 		$arrCam[$numCam]['name'] = $arrParam[0];
 		$arrCam[$numCam]['image'] = $arrParam[1];
-		$arrCam[$numCam]['thumb'] = $arrParam[2];
+		$arrCam[$numCam]['video'] = $arrParam[2];
 
 		// increment cam number
 		$numCam += 1;
@@ -111,7 +111,7 @@ foreach ($arrCam as $index => $cam)
 {
 	echo ("<div class='cam'>");
 	echo ("<div class='text'>" . $cam['name'] . "</div>");
-	echo ("<a href='" . $urlPage . "?wall=" . $idxWall . "&cam=" . $index . "&rate=" . $rateWall . "'>");
+	echo ("<a href='" . $cam['video'] . "'>");
 	echo ("<img id='" . $cam['key'] . "' src='" . $cam['thumb'] . "'>");
 	echo ("</a></div>\n");
 }
@@ -127,7 +127,7 @@ if ($idxCam != -1)
 {
 	echo ("<div class='live'>");
 	echo ("<div class='text'>" . $arrCam[$idxCam]['name'] . "</div>");
-	echo ("<a href='" . $urlPage . "?wall=" . $idxWall . "&rate=" . $rateWall . "'>");
+	echo ("<a href='" . $arrCam[$idxCam]['video']  . "'>");
 	echo ("<img id='live' src='" . $arrCam[$idxCam]['image'] . "'>");
 	echo ("</a></div>");
 }
