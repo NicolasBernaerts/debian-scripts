@@ -112,7 +112,7 @@ foreach ($arrCam as $index => $cam)
 	echo ("<div class='cam'>");
 	echo ("<div class='text'>" . $cam['name'] . "</div>");
 	echo ("<a href='" . $cam['video'] . "'>");
-	echo ("<img id='" . $cam['key'] . "' src='" . $cam['thumb'] . "'>");
+	echo ("<img id='" . $cam['key'] . "' src='" . $cam['image'] . "'>");
 	echo ("</a></div>\n");
 }
 
