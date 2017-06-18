@@ -2,7 +2,7 @@
 
 Video camera list is in file **cam-wall.lst**. Parameters are :
 
-**camera descrition;camera URL for full size image;camera URL for thumbnail image;wall number1-wall number 2-...**
+**camera descrition;camera URL for thumbnail image;camera URL for video stream;wall number1-wall number 2-...**
 
 You can define different camera walls in this configuration file.
 
