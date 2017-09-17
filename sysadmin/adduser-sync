@@ -1,0 +1,152 @@
+#!/bin/bash
+# Script to create account synchronised between system, samba and rsync
+# and synchronise it thru samba and rsync
+# Account can be created with no shell access
+#
+# History
+#  24/05/2013 : V1.0 - Creation by N. Bernaerts
+#  15/09/2017 : V2.0 - Complete rewrite
+# --------------------------------------------
+
+# help message if no parameter
+if [ ${#} -eq 0 ];
+then
+    echo "Script to create a new user and synchronise it with samba and rsync."
+    echo "It can create users with restricted shell access."
+    echo "Options are :"
+    echo "  --login          Login (compulsory)"
+    echo "  --password       Password (compulsory)"
+    echo "  --homedir        Set home directory"
+    echo "  --samba          Synchronise with Samba"
+    echo "  --rsync          Synchronise with Rsync"
+    echo "  --noshell        Remove shell access (only Samba and Rsync access)"
+    exit 1
+fi
+
+# iterate thru parameters
+while test ${#} -gt 0
+do
+  case $1 in
+    --login) shift; USER_LOGIN="$1"; shift; ;;
+    --password) shift; USER_PASSWORD="$1"; shift; ;;
+    --homedir) shift; USER_HOME="$1"; shift; ;;
+    --samba) SYNC_SAMBA="ok"; shift; ;;
+    --rsync) SYNC_RSYNC="ok"; shift; ;;
+    --noshell) USER_NOSHELL="ok"; shift; ;;
+    *) echo "Parameter $1 is unknown, it is ignored"; shift; ;;
+  esac
+done
+
+# check compulsory parameters
+[ "${USER_LOGIN}" = "" ] && { echo "Error : Parameters --login is compulsory"; exit; }
+[ "${USER_PASSWORD}" = "" ] && { echo "Error : Parameters --password is compulsory"; exit; }
+
+# set home directory
+[ "${USER_HOME}" = "" ] && USER_HOME="/home/${USER_LOGIN}"
+
+# ----------------
+# System account
+# ----------------
+
+# check if system user exists
+USER_SYSTEM=$(id "${USER_LOGIN}" | grep "uid=")
+
+# if doesn't exist, create system user
+if [ "${USER_SYSTEM}" = "" ]
+then
+	# create system account
+	useradd -m -d "${USER_HOME}" "${USER_LOGIN}"
+
+	# display progress
+	echo "Info : System account created with home directory ${USER_HOME}"
+
+# else display warning
+else
+	echo "Warn : System account ${USER_LOGIN} already exist"
+fi
+
+# define user password
+(echo "${USER_PASSWORD}"; echo "${USER_PASSWORD}";) | passwd "${USER_LOGIN}"
+
+# display progress
+echo "Info : System account password updated"
+
+# if needed, remove default shell
+if [ "${USER_NOSHELL}" = "ok" ]
+then
+	# change to no shell
+	usermod -s /bin/false "${USER_LOGIN}"
+
+	# display progress
+	echo "Info : User will have no shell access"
+fi
+
+# ----------------
+#  Samba account
+# ----------------
+
+if [ "${SYNC_SAMBA}" = "ok" ]
+then
+	# create samba user and/or update password
+	(echo "${USER_PASSWORD}"; echo "${USER_PASSWORD}";) | smbpasswd -as "${USER_LOGIN}"
+
+	# restart service
+	service smbd restart
+
+	# display progress
+	echo "Info : Samba account declared"
+	echo "Info : Samba password updated"
+fi
+
+# ----------------
+#  RSync account
+# ----------------
+
+if [ "${SYNC_RSYNC}" = "ok" ]
+then
+	# configuration files
+	RSYNC_CONF="/etc/rsyncd.conf"
+	RSYNC_PWD="/etc/rsyncd.secrets"
+
+	# check if rsync module exists for this user
+	USER_RSYNC=$(cat "${RSYNC_CONF}" | grep -w "\[${USER_LOGIN}\]")
+
+	# if module not declared
+	if [ "${USER_RSYNC}" = "" ]
+	then 
+		# declare rsync module for this user
+		echo "" >> "${RSYNC_CONF}"
+		echo "[${USER_LOGIN}]" >> "${RSYNC_CONF}"
+		echo "comment = Home directory of ${USER_LOGIN}" >> "${RSYNC_CONF}"
+		echo "path = ${USER_HOME}" >> "${RSYNC_CONF}"
+		echo "read only = no" >> "${RSYNC_CONF}"
+		echo "list = yes" >> "${RSYNC_CONF}"
+		echo "uid = ${USER_LOGIN}" >> "${RSYNC_CONF}"
+		echo "gid = ${USER_LOGIN}" >> "${RSYNC_CONF}"
+		echo "auth users = ${USER_LOGIN}" >> "${RSYNC_CONF}"
+		echo "secrets file = ${RSYNC_PWD}" >> "${RSYNC_CONF}"
+		echo "strict modes = yes" >> "${RSYNC_CONF}"
+
+		# display progress
+		echo "Info : Rsync account declared"
+
+	# else display warning
+	else
+		echo "Warn : Rsync module ${USER_LOGIN} already exist"
+	fi
+
+	# if defined, remove previous password
+	[ -f ${RSYNC_PWD} ] && sed -i "/^${USER_LOGIN}:/d" "${RSYNC_PWD}"
+
+	# add new login and password
+	echo "${USER_LOGIN}:${USER_PASSWORD}" >> "${RSYNC_PWD}"
+
+	# change rights to rw-------
+	chmod 600 "${RSYNC_PWD}"
+
+	# restart service
+	service rsync restart
+
+	# display progress
+	echo "Info : Rsync password updated"
+fi
