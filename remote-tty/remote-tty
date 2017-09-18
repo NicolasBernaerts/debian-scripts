@@ -26,6 +26,9 @@ while read LINE; do
       # create tty
       socat pty,raw,echo=0,link=/dev/${LOCAL_TTY} tcp:${REMOTE_IP}:${REMOTE_PORT} &
       
+      # wait for 1 second
+      sleep 1
+
       # give 666 access right
       chmod 666 "/dev/${LOCAL_TTY}"
     fi
