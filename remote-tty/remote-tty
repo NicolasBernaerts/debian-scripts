@@ -6,6 +6,7 @@
 #
 # Revision history :
 # 18/02/2016 - V1.0 - Creation by N. Bernaerts
+# 18/09/2017 - V1.1 - Allow tty device access to anybody
 
 # configuration
 TTY_CONF="/etc/remote-tty.conf"
@@ -19,8 +20,14 @@ while read LINE; do
     REMOTE_PORT=$(echo "$LINE" | cut -d';' -f2)
     LOCAL_TTY=$(echo "$LINE" | cut -d';' -f3)
 
-    # test local TTY file as a caracter file
-    # if absent, declare virtual TTY port from remote device
-    [ ! -c "/dev/${LOCAL_TTY}" ] && socat pty,raw,echo=0,link=/dev/${LOCAL_TTY} tcp:${REMOTE_IP}:${REMOTE_PORT} &
+    # test if local TTY file is absent as a caracter file
+    if [ ! -c "/dev/${LOCAL_TTY}" ]
+    then
+      # create tty
+      socat pty,raw,echo=0,link=/dev/${LOCAL_TTY} tcp:${REMOTE_IP}:${REMOTE_PORT} &
+      
+      # give 666 access right
+      chmod 666 "/dev/${LOCAL_TTY}"
+    fi
   fi
 done < $TTY_CONF
