@@ -6,6 +6,7 @@
 # History
 #  24/05/2013 : V1.0 - Creation by N. Bernaerts
 #  15/09/2017 : V2.0 - Complete rewrite
+#  15/10/2017 : V2.1 - Add --bash option
 # --------------------------------------------
 
 # help message if no parameter
@@ -20,6 +21,7 @@ then
     echo "  --samba          Synchronise with Samba"
     echo "  --rsync          Synchronise with Rsync"
     echo "  --noshell        Remove shell access (only Samba and Rsync access)"
+    echo "  --bash           Set bash shell access"
     exit 1
 fi
 
@@ -32,7 +34,8 @@ do
     --homedir) shift; USER_HOME="$1"; shift; ;;
     --samba) SYNC_SAMBA="ok"; shift; ;;
     --rsync) SYNC_RSYNC="ok"; shift; ;;
-    --noshell) USER_NOSHELL="ok"; shift; ;;
+    --noshell) USER_SHELL="no"; shift; ;;
+    --bash) USER_SHELL="bash"; shift; ;;
     *) echo "Parameter $1 is unknown, it is ignored"; shift; ;;
   esac
 done
@@ -72,13 +75,22 @@ fi
 echo "Info : System account password updated"
 
 # if needed, remove default shell
-if [ "${USER_NOSHELL}" = "ok" ]
+if [ "${USER_SHELL}" = "no" ]
 then
 	# change to no shell
 	usermod -s /bin/false "${USER_LOGIN}"
 
 	# display progress
-	echo "Info : User will have no shell access"
+	echo "Info : User has no shell access"
+
+# else if needed, add bash shell
+elif [ "${USER_SHELL}" = "bash" ]
+then
+	# change to bash shell
+	usermod -s /bin/bash "${USER_LOGIN}"
+
+	# display progress
+	echo "Info : User has Bash shell access"
 fi
 
 # ----------------
