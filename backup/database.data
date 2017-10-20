@@ -1,0 +1,8 @@
+[database]
+password=xxxx
+backupdir=/data/backup/database
+
+[list]
+base=Base 1;base1
+base=Piwik;piwik
+base=...
