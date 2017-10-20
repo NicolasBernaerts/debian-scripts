@@ -3,42 +3,58 @@
 # Script to backup server databases
 #
 # Parameters :
-#  $1 - system log header
-#  $2 - Backup log file
-#  $3 - Error log file
+#  $1 - rsync backup description file
+#  $2 - log header
 #
 #  Revision history :
 #   08/06/2013, V1.0 - Creation by N. Bernaerts
 #   08/11/2013, V1.2 - Change parameters
+#   15/10/2017, V1.3 - Merge configuration in single file
 # --------------------------------------------------------
-
-# ---------- Beginning of user defined parameters -------------
-DATABASE_PATH="/.../backup/database"
-DATABASE_LIST="/.../database.list"
-DATABASE_PASSWD="..."
-# ---------------- End of user parameters ---------------------
 
 # set PATH as it is not set for udev scripts
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
+# retreive parameters
+DATABASE_DATA="$1"
+LOG_HEADER="$2"
+
+# temporary files
+DATABASE_LIST=$(mktemp -t backup-rsync-XXXXXXXX.lst)
+
+# display
+echo "${LOG_HEADER} Database : Start"
+
+# set backup parameters
+DATABASE_PASSWD="$(cat ${DATABASE_DATA} | grep "password="   | cut -d'=' -f2-)"
+DATABASE_PATH="$(cat ${DATABASE_DATA} | grep "backupdir="   | cut -d'=' -f2-)"
+
+# generate backup directories list
+grep "^base=" "${DATABASE_DATA}" > "${DATABASE_LIST}"
+
 # if needed, create backup directory
-mkdir -p $DATABASE_PATH
+mkdir -p "${DATABASE_PATH}"
 
 # loop thru the backup list
-while read line
+while read LINE
 do
-  # get current database label
-  DATABASE_LABEL=$(echo ${line} | cut -d';' -f1)
+	# keep line content
+	CONTENT=$(echo "${LINE}" | cut -d'=' -f2-)
 
-  # get current database name
-  DATABASE_NAME=$(echo ${line} | cut -d';' -f2)
+	# extract database data
+	DATABASE_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
+	DATABASE_NAME=$(echo "${LINE}" | cut -d';' -f2)
 
-  # log the backup
-  logger "$1 - Success - Database $DATABASE_LABEL"
+	# display and log the backup
+	echo "${LOG_HEADER} Database : ${DATABASE_LABEL}"
+	logger "$1 - Success - Database ${DATABASE_LABEL}"
 
-  # database dump
-  mysqldump -u root -p$DATABASE_PASSWD $DATABASE_NAME > $DATABASE_PATH/$DATABASE_NAME.sql
-done < $DATABASE_LIST
+	# database dump
+	mysqldump -u root "-p${DATABASE_PASSWD}" "${DATABASE_NAME}" > "${DATABASE_PATH}/${DATABASE_NAME}.sql"
+done < "${DATABASE_LIST}"
 
-# end
-exit
+# display
+echo "${LOG_HEADER} Database : End"
+
+# remove temporary files
+rm -f "${DATABASE_LIST}"
