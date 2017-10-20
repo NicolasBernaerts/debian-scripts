@@ -6,42 +6,30 @@
 #  * rsync
 #
 # Parameters :
-#  $1 - Target
-#  $2 - system log header
-#  $3 - Backup log file
-#  $4 - Error log file
+#  $1 - rsync backup description file
+#  $2 - log header
 #
 #  Revision history :
 #   08/06/2013, V1.0 - Creation by N. Bernaerts
 #   04/11/2013, V1.1 - Handle error cases & log
 #   08/11/2013, V1.2 - Change parameters
+#   15/10/2017, V1.3 - Merge configuration in single file
 # --------------------------------------------------------
-
-# ---------- Beginning of user defined parameters -------------
-
-# place where target list are stored
-PATH_TARGET="/..."
-
-# ---------------- End of user parameters ---------------------
 
 # set PATH (in case)
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
 # retreive parameters
-BCK_TARGET="$1"
+BACKUP_DATA="$1"
 LOG_HEADER="$2"
-LOG_BACKUP="$3"
-LOG_ERROR="$4"
 
 # temporary files
-TMP_PASSWD="/tmp/rsync-current.pwd"
-LOG_CURRENT="/tmp/rsync-current.log"
-
-# set data files for backup target
-BACKUP_LIST="${PATH_TARGET}/rsync-${BCK_TARGET}.list"
-BACKUP_DATA="${PATH_TARGET}/rsync-${BCK_TARGET}.data"
+TMP_PASSWD=$(mktemp -t backup-rsync-XXXXXXXX.pwd)
+LOG_CURRENT=$(mktemp -t backup-rsync-XXXXXXXX.log)
+BACKUP_LIST=$(mktemp -t backup-rsync-XXXXXXXX.lst)
 
 # set backup parameters
+BACKUP_NAME="$(cat ${BACKUP_DATA} | grep "name="   | cut -d'=' -f2-)"
 BACKUP_SERVER="$(cat ${BACKUP_DATA} | grep "server="   | cut -d'=' -f2-)"
 BACKUP_PORT="$(cat ${BACKUP_DATA}   | grep "port="     | cut -d'=' -f2-)"
 BACKUP_MODULE="$(cat ${BACKUP_DATA} | grep "module="   | cut -d'=' -f2-)"
@@ -49,71 +37,54 @@ BACKUP_USER="$(cat ${BACKUP_DATA}   | grep "user="     | cut -d'=' -f2-)"
 BACKUP_PASSWD="$(cat ${BACKUP_DATA} | grep "password=" | cut -d'=' -f2-)"
 BACKUP_OPTION="$(cat ${BACKUP_DATA} | grep "option="   | cut -d'=' -f2-)"
 
+# display
+echo "${LOG_HEADER} RSync : ${BACKUP_NAME} - Start"
+
+# generate backup directories list
+grep "^dir=" "${BACKUP_DATA}" > "${BACKUP_LIST}"
+
 # create password file
-echo $BACKUP_PASSWD > $TMP_PASSWD
-chmod 0700 $TMP_PASSWD
+echo "${BACKUP_PASSWD}" > "${TMP_PASSWD}"
+chmod 0700 "${TMP_PASSWD}"
 
 # loop thru the backup list
-while read line
+while read LINE
 do
-  # get current backup label
-  DIRECTORY_LABEL=$(echo ${line} | cut -d';' -f1)
+	# keep line content
+	CONTENT=$(echo "${LINE}" | cut -d'=' -f2-)
 
-  # get current backup directory
-  DIRECTORY_PATH=$(echo ${line} | cut -d';' -f2)
+	# extract directory data
+	DIRECTORY_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
+	DIRECTORY_PATH=$(echo "${CONTENT}" | cut -d';' -f2)
+	DIRECTORY_EXCLUDE=$(echo "${CONTENT}" | cut -d';' -f3)
 
-  # get current exclusion list
-  DIRECTORY_EXCLUDE=$(echo ${line} | cut -d';' -f3)
+	# if backup dir exists, start the backup
+	if [ -d "$DIRECTORY_PATH" ]
+	then
+		# set options
+		ARR_OPTION=( $(echo ${BACKUP_OPTION}) )
+		[ "$DIRECTORY_EXCLUDE" != "" ] && ARR_OPTION=( "${ARR_OPTION[@]}" "--exclude=${DIRECTORY_EXCLUDE}" )
 
-  # if backup dir exists, start the backup
-  if [ -d "$DIRECTORY_PATH" ]
-  then
-    # beginning of backup
-    echo "--------- $BCK_TARGET : $DIRECTORY_PATH ---------" >> $LOG_BACKUP
+		# beginning of backup
+		echo "${LOG_HEADER} RSync : ${BACKUP_NAME} - ${DIRECTORY_PATH} ("${ARR_OPTION[@]}")"
 
-    # backup the directory structure
-    if [ "$DIRECTORY_EXCLUDE" != "" ]
-      then rsync $BACKUP_OPTION --exclude="$DIRECTORY_EXCLUDE" --password-file=$TMP_PASSWD $DIRECTORY_PATH rsync://$BACKUP_USER@$BACKUP_SERVER:$BACKUP_PORT/$BACKUP_MODULE > $LOG_CURRENT;
-      else rsync $BACKUP_OPTION --password-file=$TMP_PASSWD $DIRECTORY_PATH rsync://$BACKUP_USER@$BACKUP_SERVER:$BACKUP_PORT/$BACKUP_MODULE > $LOG_CURRENT;
-    fi
+		# backup the directory structure
+		rsync "${ARR_OPTION[@]}" "--password-file=${TMP_PASSWD}" "${DIRECTORY_PATH}" "rsync://${BACKUP_USER}@${BACKUP_SERVER}:${BACKUP_PORT}/${BACKUP_MODULE}" > "${LOG_CURRENT}"
 
-    # count numer of lines in the log
-    LOG_LINE=$(wc -l "$LOG_CURRENT" | cut -d' ' -f1)
+		# log success or error
+		LOG_LINE=$(wc -l "${LOG_CURRENT}" | cut -d' ' -f1)
+		[ "$LOG_LINE" -gt 0 ] && RESULT="Success" || RESULT="Error"
+		logger "${LOG_HEADER} - ${RESULT} - Rsync ${BACKUP_NAME} : ${DIRECTORY_PATH}"
 
-    # if current log contains more than 10 lines, log 5 first and 5 last lines
-    if [ "$LOG_LINE" -gt "10"  ]
-    then
-       logger "$LOG_HEADER - Success - $BCK_TARGET : $DIRECTORY_PATH"
-       head -n 5 $LOG_CURRENT >> $LOG_BACKUP
-       echo "..." >> $LOG_BACKUP
-       tail -n 5 $LOG_CURRENT >> $LOG_BACKUP
 
-    # else if current log contains less than 10 lines, log all lines
-    elif [ "$LOG_LINE" -gt "0"  ]
-    then
-       logger "$LOG_HEADER - Success - $BCK_TARGET : $DIRECTORY_PATH"
-       cat $LOG_CURRENT >> $LOG_BACKUP
+	# else, directory not present
+	else
+		logger "${LOG_HEADER} - Error - Rsync ${BACKUP_NAME} : Absent directory ${DIRECTORY_PATH}"
+	fi
+done < "${BACKUP_LIST}"
 
-    # else if current log is empty, log error
-    else
-       logger "$LOG_HEADER - Error - $BCK_TARGET : $DIRECTORY_PATH"
-       echo "Error : Server $BACKUP_SERVER did not respond to backup $DIRECTORY_PATH" >> $LOG_BACKUP
-       echo "Error" >> $LOG_ERROR
-    fi
-
-    # end of backup
-    echo "" >> $LOG_BACKUP
-
-  # else, directory not present
-  else
-  logger "$LOG_HEADER - Error - $BCK_TARGET : Absent directory $DIRECTORY_PATH"
-  echo "Error" >> $LOG_ERROR
-
-  fi
-done < $BACKUP_LIST
+# display
+echo "${LOG_HEADER} RSync : ${BACKUP_NAME} - End"
 
 # remove temporary files
-rm $TMP_PASSWD
-
-# end
-exit
+rm -f "${BACKUP_LIST}" "${TMP_PASSWD}" "${LOG_CURRENT}"
