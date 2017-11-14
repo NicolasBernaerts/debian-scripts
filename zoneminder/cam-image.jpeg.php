@@ -7,7 +7,7 @@
 // -------------------------------------------------------
 
 // zoneminder configuration
-require_once ("cam-config.php");
+require_once ("cam-config.inc");
 
 // parameters : image index and image scale (in % between 1 and 100)
 $monitorId = -1;
