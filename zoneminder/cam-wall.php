@@ -16,9 +16,6 @@
 // zoneminder configuration
 require_once ("cam-config.inc");
 
-// initilisation
-$arrCam = Array ();
-
 // set client type (lan or internet)
 $clientIP = $_SERVER['REMOTE_ADDR'];
 $typeZone="internet";
@@ -26,18 +23,23 @@ if ($clientIP == "127.0.0.1") $typeZone = "lan";
 if (substr($clientIP,0,8) == "192.168.") $typeZone = "lan";
 if (substr($clientIP,0,5) == "10.0.") $typeZone = "lan";
 
-// parameters
-$wallIndex = 1;		// Index of first cam on the wall
+// Parameter : Index of first cam on the wall
+$wallIndex = 1;	
 if (isset($_GET["index"])) $wallIndex = $_GET["index"];
-$nbrRow = 6;		// number of lines
+// Parameter : Number of camera lines
+$nbrRow = 6;
 if (isset($_GET["row"])) $nbrRow = $_GET["row"];
-$nbrColumn = 7;		// number of columns
+// Parameter : Number of camera columns
+$nbrColumn = 7;
 if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
-$wallWidth = 1920;	// Width of the wall (in pixels)
+// Parameter : Width of the wall (in pixels)
+$wallWidth = 1920;
 if (isset($_GET["width"])) $wallWidth = $_GET["width"];
-$wallHeight = 1080;	// Height of the wall (in pixels)
+// Parameter : Height of the wall (in pixels)
+$wallHeight = 1080;
 if (isset($_GET["height"])) $wallHeight = $_GET["height"];
-$zoomHeight = 720;	// Height of the zoomed picture (in pixels)
+// Parameter : Height of the zoomed picture (in pixels)
+$zoomHeight = 720;
 if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
 
 // calculate size on the wall
@@ -76,27 +78,28 @@ asort($arrSequence);
 
 // create camera list from sort monitor sequence
 $countCam = 0;
+$arrCam = Array ();
 foreach ($arrSequence as $idxMonitor => $sequence) 
 {
-	// get monitor data
-	$monitor = $arrMonitor["monitors"][$idxMonitor];
-
-	// calculate scale factor
-	$camWidth = $monitor["Monitor"]["Width"];
-	$camHeight = $monitor["Monitor"]["Height"];
-	$scaleWidth = $maxThumbWidth / $camWidth;
-	$scaleHeight = $maxThumbHeight / $camHeight;
-	$scaleFactor = min ($scaleWidth, $scaleHeight);
-
-	// calculate thumb and zoom scaling
-	$scaleThumb = round (100 * $scaleFactor) + 1;
-	$scaleZoom = round (100 * $zoomHeight / $camHeight) + 1;
-
-	// populate cams array
+	// populate cams array according to start index and wall size
 	if (($sequence >= $wallIndex) && ($countCam < $maxCam))
 	{
 		// increment counter
 		$countCam++;
+
+		// get monitor data
+		$monitor = $arrMonitor["monitors"][$idxMonitor];
+
+		// calculate scale factor
+		$camWidth = $monitor["Monitor"]["Width"];
+		$camHeight = $monitor["Monitor"]["Height"];
+		$scaleWidth = $maxThumbWidth / $camWidth;
+		$scaleHeight = $maxThumbHeight / $camHeight;
+		$scaleFactor = min ($scaleWidth, $scaleHeight);
+
+		// calculate thumb and zoom scaling
+		$scaleThumb = round (100 * $scaleFactor) + 1;
+		$scaleZoom = round (100 * $zoomHeight / $camHeight) + 1;
 
 		// add cam to array
 		$arrCam[$sequence]['id']     = $monitor["Monitor"]["Id"];
@@ -110,7 +113,7 @@ foreach ($arrSequence as $idxMonitor => $sequence)
 	}
 }
 
-// calculate number of cams
+// number of cameras to display
 $nbrCam = count ($arrCam);
 ?>
 
@@ -173,13 +176,14 @@ setTimeout(function() { updateImage(1); }, 10);
 
 <?php
 
-// display monitors
+// loop to declare cameras
 $index = 1;
 foreach ($arrCam as $cam) 
 {
 	// calculate label vertical margin according to image size
 	$marginTop = $cam['theight'] - 20;
 
+	// display current camera
 	echo ("<li><span style='margin-left:4px; margin-top:" . $marginTop . "px;' >" . $cam['name'] . "</span>");
 	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img id='cam" . $index . "' src='" . $cam['urlthumb'] . "' width=" . $cam['twidth'] . " height=" . $cam['theight'] . "></a>");
 	echo ("</li>\n");
