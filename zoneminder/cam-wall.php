@@ -14,7 +14,7 @@
 // -------------------------------------------------------
 
 // zoneminder configuration
-require_once ("cam-config.php");
+require_once ("cam-config.inc");
 
 // initilisation
 $arrCam = Array ();
