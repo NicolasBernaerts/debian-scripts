@@ -1,0 +1,57 @@
+#!/bin/bash
+# ------------------------------------------------------
+#  Detect device presence on a LAN
+#
+#  This script can be called in 2 ways :
+#   - to scan a LAN for some devices
+#   - to check a device presence
+#
+#  15/12/2017, V1.0 - Creation by N. Bernaerts
+# ------------------------------------------------------
+
+# -----------------------
+# -     Parameters      -
+# -----------------------
+
+# help message if no parameter
+if [ ${#} -eq 0 ];
+then
+    echo "Detect device presence on a LAN"
+    echo "This script can be called in 2 ways :"
+    echo "  --scan                   Daemon mode to scan for devices"
+    echo "  --check <device-name>    check for a specific device (iso 8601 timestamp if present)"
+    echo "Other parameters are :"
+    echo "  --conf            Path to specific configuration file"
+    echo "  --delay           Maximum delay to consider as present (in seconds, default to 30mn)"
+    exit 1
+fi
+
+# iterate thru parameters
+while test ${#} -gt 0
+do
+  case $1 in
+    --scan) MODE="scan"; shift; ;;
+    --check) MODE="check"; shift; NAME="$1"; shift; ;;
+    --conf) CONFIG="$1"; shift; ;;
+    --delay) DELAY="$1"; shift; ;;
+    *) echo "Parameter $1 ignored"; shift; ;;
+  esac
+done
+
+# ---------------------
+# -     Controls      -
+# ---------------------
+
+# default values
+[ "${CONFIG}" = "" ] && CONFIG="/etc/detect-device.conf"
+[ "${DELAY}" = "" ] && DELAY="1800"
+
+# execution mode
+[ "${MODE}" = "" ] && echo { "[error] Execution mode should be --daemon or --scan"; exit 1 }
+
+# device name missing
+[ "${MODE}" = "check" -a "${NAME}" = "" ] && echo { "[error] Name of device to check is missing"; exit 1 }
+
+# configuration file absent
+[ ! -f "${CONFIG}" ] && echo { "[error] Configuration file ${CONFIG} missing"; exit 1 }
+
