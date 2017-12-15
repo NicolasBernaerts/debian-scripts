@@ -18,12 +18,13 @@ if [ ${#} -eq 0 ];
 then
     echo "Detect device presence on a LAN"
     echo "This script can be called in 2 ways :"
-    echo "  --scan                   Daemon mode to scan for devices"
-    echo "  --check <device-name>    check for device presence (iso 8601 timestamp if present)"
+    echo "  --daemon                 Daemon mode to scan for devices"
+    echo "  --check <device-name>    check for device presence"
     echo "Other parameters are :"
-    echo "  --conf            Path to specific configuration file"
-    echo "  --delay           Maximum delay to consider as present (in seconds, default to 30mn)"
-    echo "  --on-off          Answer On or Off when checking device presence"
+    echo "  --conf                Path to specific configuration file"
+    echo "  --delay               Maximum delay to check for presence (in seconds, default to 30mn)"
+    echo "  --mode-onoff          Presence given as On / Off"
+    echo "  --mode-timestamp      Presence given as last presence timestamp (default)"
     exit 1
 fi
 
@@ -31,11 +32,12 @@ fi
 while test ${#} -gt 0
 do
   case $1 in
-    --scan) MODE="scan"; shift; ;;
+    --daemon) MODE="daemon"; shift; ;;
     --check) MODE="check"; shift; NAME="$1"; shift; ;;
     --conf) CONFIG="$1"; shift; ;;
     --delay) DELAY="$1"; shift; ;;
-    --on-off) ANSWER="on-off"; shift; ;;
+    --mode-onoff) ANSWER="onoff"; shift; ;;
+    --mode-timestamp) ANSWER="timestamp"; shift; ;;
     *) echo "Parameter $1 ignored"; shift; ;;
   esac
 done
@@ -47,6 +49,7 @@ done
 # default values
 [ "${CONFIG}" = "" ] && CONFIG="/etc/detect-device.conf"
 [ "${DELAY}" = "" ] && DELAY="1800"
+[ "${ANSWER}" = "" ] && ANSWER="timestamp"
 
 # execution mode
 [ "${MODE}" = "" ] && echo { "[error] Execution mode should be --daemon or --scan"; exit 1 }
@@ -57,3 +60,37 @@ done
 # configuration file absent
 [ ! -f "${CONFIG}" ] && echo { "[error] Configuration file ${CONFIG} missing"; exit 1 }
 
+# ---------------------
+# -    Check mode     -
+# ---------------------
+
+if [ "${MODE}" = "check" ]
+then
+
+    # read device MAC address
+    MAC_ADDR=$(grep "^${NAME}=" "${CONFIG}" | cut -d'=' -f2)
+
+    # if device definiton is missing
+    [ "${MAC_ADDR}" = "" ] && echo { "[error] Device ${NAME} is not configured in ${CONFIG}"; exit 1 }
+
+    # set device status file
+    STATUS_FILE="/tmp/detect-device/${NAME}.time"
+    
+    # check last presence detection
+    [ -f "${STATUS_FILE}" ] && PRESENCE=$(cat "${STATUS_FILE}")
+    
+    # if needed, convert to on-off
+    [ "${ANSWER}" = "onoff" ] && [ "${PRESENCE}" != "" ] && PRESENCE="On" || PRESENCE="Off"
+    
+    # display answer
+    [ "${PRESENCE}" != "" ] && echo "${PRESENCE}"
+    
+# ---------------------
+# -   Daemon mode     -
+# ---------------------
+
+else
+
+    echo "daemon mode"
+    
+fi
