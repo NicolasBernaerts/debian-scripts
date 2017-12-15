@@ -19,10 +19,11 @@ then
     echo "Detect device presence on a LAN"
     echo "This script can be called in 2 ways :"
     echo "  --scan                   Daemon mode to scan for devices"
-    echo "  --check <device-name>    check for a specific device (iso 8601 timestamp if present)"
+    echo "  --check <device-name>    check for device presence (iso 8601 timestamp if present)"
     echo "Other parameters are :"
     echo "  --conf            Path to specific configuration file"
     echo "  --delay           Maximum delay to consider as present (in seconds, default to 30mn)"
+    echo "  --on-off          Answer On or Off when checking device presence"
     exit 1
 fi
 
@@ -34,6 +35,7 @@ do
     --check) MODE="check"; shift; NAME="$1"; shift; ;;
     --conf) CONFIG="$1"; shift; ;;
     --delay) DELAY="$1"; shift; ;;
+    --on-off) ANSWER="on-off"; shift; ;;
     *) echo "Parameter $1 ignored"; shift; ;;
   esac
 done
