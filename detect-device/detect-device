@@ -2,9 +2,10 @@
 # ------------------------------------------------------
 #  Detect device presence on a LAN
 #
-#  This script can be called in 2 ways :
-#   - to scan a LAN for some devices
-#   - to check a device presence
+#  This script can be called in 3 ways :
+#   --daemon     Permanent scan of LAN to look for devices presence
+#   --check      Scan LAN once to look for devices presence
+#   --presence   Check for a specific device presence
 #
 #  15/12/2017, V1.0 - Creation by N. Bernaerts
 # ------------------------------------------------------
