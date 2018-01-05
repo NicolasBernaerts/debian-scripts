@@ -15,9 +15,11 @@
 # set PATH as it is not set for udev scripts
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
-# retreive parameters
+# parameters
 DATABASE_DATA="$1"
-LOG_HEADER="$2"
+
+# log header
+LOG_HEADER=$(date +"BCK%d%m")
 
 # temporary files
 DATABASE_LIST=$(mktemp -t backup-rsync-XXXXXXXX.lst)
