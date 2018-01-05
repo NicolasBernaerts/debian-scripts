@@ -1,10 +1,9 @@
 #!/bin/bash
 # --------------------------------------------------------
-# Script to backup server databases
+# Script to backup databases on a server
 #
 # Parameters :
-#  $1 - rsync backup description file
-#  $2 - log header
+#  $1 - database backup description file
 #
 #  Revision history :
 #   08/06/2013, V1.0 - Creation by N. Bernaerts
