@@ -1,13 +1,9 @@
 #!/bin/bash
 # --------------------------------------------------------
-# Script to backup server databases
+# Script to backup directory trees of a server thru rsync
 #
-# This script uses the following tools :
-#  * rsync
-#
-# Parameters :
+# Parameter :
 #  $1 - rsync backup description file
-#  $2 - log header
 #
 #  Revision history :
 #   08/06/2013, V1.0 - Creation by N. Bernaerts
@@ -19,9 +15,11 @@
 # set PATH (in case)
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
-# retreive parameters
+# parameter
 BACKUP_DATA="$1"
-LOG_HEADER="$2"
+
+# log header
+LOG_HEADER=$(date +"BCK%d%m")
 
 # temporary files
 TMP_PASSWD=$(mktemp -t backup-rsync-XXXXXXXX.pwd)
@@ -37,8 +35,9 @@ BACKUP_USER="$(cat ${BACKUP_DATA}   | grep "user="     | cut -d'=' -f2-)"
 BACKUP_PASSWD="$(cat ${BACKUP_DATA} | grep "password=" | cut -d'=' -f2-)"
 BACKUP_OPTION="$(cat ${BACKUP_DATA} | grep "option="   | cut -d'=' -f2-)"
 
-# display
-echo "${LOG_HEADER} RSync : ${BACKUP_NAME} - Start"
+# log and display
+echo   "${LOG_HEADER} RSync : ${BACKUP_NAME} - Start"
+logger "${LOG_HEADER} RSync : ${BACKUP_NAME} - Start"
 
 # generate backup directories list
 grep "^dir=" "${BACKUP_DATA}" > "${BACKUP_LIST}"
@@ -65,26 +64,26 @@ do
 		ARR_OPTION=( $(echo ${BACKUP_OPTION}) )
 		[ "$DIRECTORY_EXCLUDE" != "" ] && ARR_OPTION=( "${ARR_OPTION[@]}" "--exclude=${DIRECTORY_EXCLUDE}" )
 
-		# beginning of backup
-		echo "${LOG_HEADER} RSync : ${BACKUP_NAME} - ${DIRECTORY_PATH} ("${ARR_OPTION[@]}")"
-
 		# backup the directory structure
 		rsync "${ARR_OPTION[@]}" "--password-file=${TMP_PASSWD}" "${DIRECTORY_PATH}" "rsync://${BACKUP_USER}@${BACKUP_SERVER}:${BACKUP_PORT}/${BACKUP_MODULE}" > "${LOG_CURRENT}"
 
-		# log success or error
+		# log and display success or error
 		LOG_LINE=$(wc -l "${LOG_CURRENT}" | cut -d' ' -f1)
 		[ "$LOG_LINE" -gt 0 ] && RESULT="Success" || RESULT="Error"
-		logger "${LOG_HEADER} - ${RESULT} - Rsync ${BACKUP_NAME} : ${DIRECTORY_PATH}"
+		echo   "${LOG_HEADER} - Rsync ${BACKUP_NAME} : [${RESULT}] ${DIRECTORY_PATH} (${ARR_OPTION[@]})"
+		logger "${LOG_HEADER} - Rsync ${BACKUP_NAME} : [${RESULT}] ${DIRECTORY_PATH} (${ARR_OPTION[@]})"
 
-
-	# else, directory not present
+	# else, 
 	else
-		logger "${LOG_HEADER} - Error - Rsync ${BACKUP_NAME} : Absent directory ${DIRECTORY_PATH}"
+		# directory not present
+		echo   "${LOG_HEADER} - Rsync ${BACKUP_NAME} : [Error] ${DIRECTORY_PATH} is missing"
+		logger "${LOG_HEADER} - Rsync ${BACKUP_NAME} : [Error] ${DIRECTORY_PATH} is missing"
 	fi
 done < "${BACKUP_LIST}"
 
 # display
-echo "${LOG_HEADER} RSync : ${BACKUP_NAME} - End"
+echo   "${LOG_HEADER} - RSync ${BACKUP_NAME} : End"
+logger "${LOG_HEADER} - RSync ${BACKUP_NAME} : End"
 
 # remove temporary files
 rm -f "${BACKUP_LIST}" "${TMP_PASSWD}" "${LOG_CURRENT}"
