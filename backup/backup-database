@@ -23,8 +23,9 @@ LOG_HEADER=$(date +"BCK%d%m")
 # temporary files
 DATABASE_LIST=$(mktemp -t backup-rsync-XXXXXXXX.lst)
 
-# display
-echo "${LOG_HEADER} Database : Start"
+# log and display - start
+echo   "${LOG_HEADER} Database - Start"
+logger "${LOG_HEADER} Database - Start"
 
 # set backup parameters
 DATABASE_PASSWD="$(cat ${DATABASE_DATA} | grep "password="   | cut -d'=' -f2-)"
@@ -39,6 +40,7 @@ mkdir -p "${DATABASE_PATH}"
 # loop thru the backup list
 while read LINE
 do
+
 	# keep line content
 	CONTENT=$(echo "${LINE}" | cut -d'=' -f2-)
 
@@ -46,16 +48,18 @@ do
 	DATABASE_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
 	DATABASE_NAME=$(echo "${LINE}" | cut -d';' -f2)
 
-	# display and log the backup
-	echo "${LOG_HEADER} Database : ${DATABASE_LABEL}"
-	logger "$1 - Success - Database ${DATABASE_LABEL}"
-
 	# database dump
 	mysqldump -u root "-p${DATABASE_PASSWD}" "${DATABASE_NAME}" > "${DATABASE_PATH}/${DATABASE_NAME}.sql"
+
+	# log and display - backup
+	echo   "${LOG_HEADER} Database - ${DATABASE_LABEL}"
+	logger "${LOG_HEADER} Database - ${DATABASE_LABEL}"
+
 done < "${DATABASE_LIST}"
 
-# display
-echo "${LOG_HEADER} Database : End"
+# log and display - end
+echo   "${LOG_HEADER} Database - End"
+logger "${LOG_HEADER} Database - End"
 
 # remove temporary files
 rm -f "${DATABASE_LIST}"
