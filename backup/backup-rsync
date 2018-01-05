@@ -35,7 +35,7 @@ BACKUP_USER="$(cat ${BACKUP_DATA}   | grep "user="     | cut -d'=' -f2-)"
 BACKUP_PASSWD="$(cat ${BACKUP_DATA} | grep "password=" | cut -d'=' -f2-)"
 BACKUP_OPTION="$(cat ${BACKUP_DATA} | grep "option="   | cut -d'=' -f2-)"
 
-# log and display
+# log and display - start
 echo   "${LOG_HEADER} RSync : ${BACKUP_NAME} - Start"
 logger "${LOG_HEADER} RSync : ${BACKUP_NAME} - Start"
 
@@ -67,7 +67,7 @@ do
 		# backup the directory structure
 		rsync "${ARR_OPTION[@]}" "--password-file=${TMP_PASSWD}" "${DIRECTORY_PATH}" "rsync://${BACKUP_USER}@${BACKUP_SERVER}:${BACKUP_PORT}/${BACKUP_MODULE}" > "${LOG_CURRENT}"
 
-		# log and display success or error
+		# log and display - success or error
 		LOG_LINE=$(wc -l "${LOG_CURRENT}" | cut -d' ' -f1)
 		[ "$LOG_LINE" -gt 0 ] && RESULT="Success" || RESULT="Error"
 		echo   "${LOG_HEADER} - Rsync ${BACKUP_NAME} : [${RESULT}] ${DIRECTORY_PATH} (${ARR_OPTION[@]})"
@@ -81,7 +81,7 @@ do
 	fi
 done < "${BACKUP_LIST}"
 
-# display
+# log and display - end
 echo   "${LOG_HEADER} - RSync ${BACKUP_NAME} : End"
 logger "${LOG_HEADER} - RSync ${BACKUP_NAME} : End"
 
