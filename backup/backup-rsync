@@ -83,9 +83,10 @@ logger "${LOG_HEADER} - ${BACKUP_NAME} : Start"
 
 # temporary files
 TMP_DIR=$(mktemp -t -d backup-XXXXXXXX)
-TMP_PWD=$(mktemp -t backup-XXXXXXXX.pwd)
-TMP_LOG=$(mktemp -t backup-XXXXXXXX.log)
-TMP_LST=$(mktemp -t backup-XXXXXXXX.lst)
+TMP_PWD="${TMP_DIR}/backup.pwd"
+TMP_LOG="${TMP_DIR}/backup.log"
+TMP_LST="${TMP_DIR}/backup.lst"
+TMP_DB="${TMP_DIR}/database"
 
 # ----------------
 #  remote server
@@ -107,6 +108,9 @@ BACKUP_OPTION=$(cat ${BACKUP_DATA} | grep "option="   | cut -d'=' -f2-)
 #  database 
 # -----------
 
+# create backup directory
+mkdir "${TMP_DB}"
+
 # get database parameters
 DB_PASSWD="$(cat ${BACKUP_DATA} | grep "db-password=" | cut -d'=' -f2-)"
 
@@ -123,7 +127,7 @@ do
 	DATABASE_NAME=$(echo "${LINE}" | cut -d';' -f2)
 
 	# database dump
-	mysqldump -u root "-p${DB_PASSWD}" "${DATABASE_NAME}" > "${TMP_DIR}/${DATABASE_NAME}.sql"
+	mysqldump -u root "-p${DB_PASSWD}" "${DATABASE_NAME}" > "${TMP_DB}/${DATABASE_NAME}.sql"
 
 	# log and display - backup
 	echo   "${LOG_HEADER} - ${BACKUP_NAME} : Database ${DATABASE_LABEL}"
@@ -148,7 +152,7 @@ do
 
 	# extract directory data
 	DIRECTORY_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
-	DIRECTORY_PATH=$(echo "${CONTENT}" | cut -d';' -f2 | sed "s|##DATABASE##|${TMP_DIR}|")
+	DIRECTORY_PATH=$(echo "${CONTENT}" | cut -d';' -f2 | sed "s|##DATABASE##|${TMP_DB}|")
 	DIRECTORY_EXCLUDE=$(echo "${CONTENT}" | cut -d';' -f3)
 
 	# if backup dir exists, start the backup
