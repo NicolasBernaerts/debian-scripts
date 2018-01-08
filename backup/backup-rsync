@@ -182,8 +182,7 @@ done < "${TMP_LST}"
 # -----------
 
 # remove temporary files
-rm -fr "${TMP_DIR}"
-rm -f "${TMP_LST}" "${TMP_PWD}" "${TMP_LOG}"
+rm -rf "${TMP_DIR}"
 
 # log and display - end
 echo   "${LOG_HEADER} - ${BACKUP_NAME} : End"
