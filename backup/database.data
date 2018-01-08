@@ -1,8 +1,19 @@
+[remote]
+name=backup-name
+server=192.168.0.x
+port=873
+module=module-name
+user=user-name
+password=password
+option=-rtv --del
+ 
 [database]
-password=xxxx
-backupdir=/data/backup/database
-
-[list]
-base=Base 1;base1
-base=Piwik;piwik
-base=...
+db-password=database-password
+database=Dolibarr;dolibarr
+database=...;...
+ 
+[directory]
+directory=Database;##DATABASE##
+directory=Sites Web;/var/www-data;*/cache/*
+directory=Dolibarr;/usr/share/dolibarr
+directory=...;...
