@@ -82,7 +82,7 @@ echo   "${LOG_HEADER} - ${BACKUP_NAME} : Start"
 logger "${LOG_HEADER} - ${BACKUP_NAME} : Start"
 
 # temporary files
-TMP_DIR=$(mktemp -d backup-XXXXXXXX)
+TMP_DIR=$(mktemp -t -d backup-XXXXXXXX)
 TMP_PWD=$(mktemp -t backup-XXXXXXXX.pwd)
 TMP_LOG=$(mktemp -t backup-XXXXXXXX.log)
 TMP_LST=$(mktemp -t backup-XXXXXXXX.lst)
@@ -169,7 +169,7 @@ do
 
 	# else, directory not present
 	else
-		logger "${LOG_HEADER} - ${BACKUP_NAME} : [Absent] ${DIRECTORY_LABEL} (${DIRECTORY_PATH})"
+		logger "${LOG_HEADER} - ${BACKUP_NAME} : [Absent] ${DIRECTORY_PATH}"
 	fi
 done < "${TMP_LST}"
 
@@ -178,7 +178,7 @@ done < "${TMP_LST}"
 # -----------
 
 # remove temporary files
-rmdir -p "${TMP_DIR}"
+rm -fr "${TMP_DIR}"
 rm -f "${TMP_LST}" "${TMP_PWD}" "${TMP_LOG}"
 
 # log and display - end
