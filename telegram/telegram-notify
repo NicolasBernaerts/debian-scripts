@@ -31,11 +31,19 @@ FILE_CONF="/etc/telegram-notify.conf"
 command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1; }
 
 # -------------------------------------------------------
+#   Load Piped Text
+# -------------------------------------------------------
+for pipedtext in `cat /dev/stdin`
+do
+NOTIFY_TEXT=$pipedtext
+done
+
+# -------------------------------------------------------
 #   Loop to load arguments
 # -------------------------------------------------------
 
 # if no argument, display help
-if [ $# -eq 0 ] 
+if [ $# -eq 0 ] && [ NOTIFY_TEXT = "" ] 
 then
   echo "Tool to send a message to a Telegram User or Channel."
   echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
