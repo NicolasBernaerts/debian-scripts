@@ -11,6 +11,7 @@
 #                       Remove dependency to PERL
 #    08/08/2016, V1.3 - Add --document, --html and --silent options
 #    10/11/2016, V1.4 - Add --icon option
+#    11/01/2018, V1.5 - Add possibility of piped text, idea from Yasir Atabani
 # ---------------------------------------------------
 
 # initialise variables
@@ -40,7 +41,7 @@ then
   echo "Tool to send a message to a Telegram User or Channel."
   echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
   echo "Main parameters are :"
-  echo "  --text <text>       Text of the message or file holding the text"
+  echo "  --text <text>       Text of the message or file with the text (use - for piped text)"
   echo "  --photo <file>      Image to display"
   echo "  --document <file>   Document to transfer"
   echo "Options are :"
@@ -103,11 +104,14 @@ done
 #   String preparation : space and line break
 # -------------------------------------------------------
 
+# if text is to be read from pipe, get it
+[ ! -t 0 -a "${DISPLAY_TEXT}" = "-" ] && DISPLAY_TEXT=$(cat)
+
 # if text is a file, get its content
-[ -f "${DISPLAY_TEXT}" ] && DISPLAY_TEXT="$(cat "${DISPLAY_TEXT}")"
+[ -f "${DISPLAY_TEXT}" ] && DISPLAY_TEXT=$(cat "${DISPLAY_TEXT}")
 
 # convert \n to LF
-DISPLAY_TEXT="$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')"
+DISPLAY_TEXT=$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')
 
 # if icon defined, include ahead of notification
 [ "${DISPLAY_ICON}" != "" ] && NOTIFY_TEXT="${DISPLAY_ICON} "
