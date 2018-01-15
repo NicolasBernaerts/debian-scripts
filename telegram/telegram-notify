@@ -11,7 +11,7 @@
 #                       Remove dependency to PERL
 #    08/08/2016, V1.3 - Add --document, --html and --silent options
 #    10/11/2016, V1.4 - Add --icon option
-#    13/02/2018, V1.5 - Add the ability to pip --text by Yasir Atabani
+#    11/01/2018, V1.5 - Add possibility of piped text, idea from Yasir Atabani
 # ---------------------------------------------------
 
 # initialise variables
@@ -38,31 +38,26 @@ command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1;
 # if there is nothing piped, go ahead and check for arguments
 if test -t 0
 then
-	# if no argument, display help
-	if [ $# -eq 0 ] && [ NOTIFY_TEXT = "" ] 
-	then
-		echo "Tool to send a message to a Telegram User or Channel."
-		echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
-		echo "Main parameters are :"
-		echo "  --text <text>       Text of the message or file holding the text"
-		echo "  --photo <file>      Image to display"
-		echo "  --document <file>   Document to transfer"
-		echo "Options are :"
-		echo "  --title <title>     Title of the message (if text message)"
-		echo "  --html              Use HTML mode for text content (markdown by default)"
-		echo "  --silent            Send message in silent mode (no user notification on the client)"
-		echo "  --user <user-id>    Recipient User or Channel ID (replaces user-id= in ${FILE_CONF})"
-		echo "  --key <api-key>     API Key of your Telegram bot (replaces api-key= in ${FILE_CONF})"
-		echo "Optionnal icons are :"
-		echo "  --success           Add a success icon"
-		echo "  --error             Add an error icon"
-		echo "  --question          Add a question mark icon"
-		echo "  --icon <code>       Add an icon by UTF code (ex 1F355)" 
-		exit
-	fi
-else
-	# if piped, use as default --text
-  NOTIFY_TEXT="$(cat -)"
+  echo "Tool to send a message to a Telegram User or Channel."
+  echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
+  echo "Main parameters are :"
+  echo "  --text <text>       Text of the message or file with the text (use - for piped text)"
+  echo "  --photo <file>      Image to display"
+  echo "  --document <file>   Document to transfer"
+  echo "Options are :"
+  echo "  --title <title>     Title of the message (if text message)"
+  echo "  --html              Use HTML mode for text content (markdown by default)"
+  echo "  --silent            Send message in silent mode (no user notification on the client)"
+  echo "  --user <user-id>    Recipient User or Channel ID (replaces user-id= in ${FILE_CONF})"
+  echo "  --key <api-key>     API Key of your Telegram bot (replaces api-key= in ${FILE_CONF})"
+  echo "Optionnal icons are :"
+  echo "  --success           Add a success icon"
+  echo "  --error             Add an error icon"
+  echo "  --question          Add a question mark icon"
+  echo "  --icon <code>       Add an icon by UTF code (ex 1F355)"
+  echo "Here is an example of piped text :
+  echo "  # echo 'text to be displayed' | telegram-notify --success --text - "
+  exit
 fi
 
 # loop to retrieve arguments
@@ -111,11 +106,14 @@ done
 #   String preparation : space and line break
 # -------------------------------------------------------
 
+# if text is to be read from pipe, get it
+[ ! -t 0 -a "${DISPLAY_TEXT}" = "-" ] && DISPLAY_TEXT=$(cat)
+
 # if text is a file, get its content
-[ -f "${DISPLAY_TEXT}" ] && DISPLAY_TEXT="$(cat "${DISPLAY_TEXT}")"
+[ -f "${DISPLAY_TEXT}" ] && DISPLAY_TEXT=$(cat "${DISPLAY_TEXT}")
 
 # convert \n to LF
-DISPLAY_TEXT="$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')"
+DISPLAY_TEXT=$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')
 
 # if icon defined, include ahead of notification
 [ "${DISPLAY_ICON}" != "" ] && NOTIFY_TEXT="${DISPLAY_ICON} "
