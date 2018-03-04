@@ -3,49 +3,53 @@
 // Webcam image wall display, based on ZoneMinder config
 //
 // Parameters :
-//   camperline - Number of images per line
+//   index  - Index of first cam to display on the wall
+//   row    - Number of camera rows on the wall
+//   column - Number of camera per row on the wall
+//   width  - Width of the wall in pixels (default = 1980px)
+//   height - Height of the wall in pixels (default = 1080px)
+//   zoom   - Height of a zoomed image in pixels (default = 720px)
 //
 // Revision history :
 //   07/06/2017 - V1.0 - Creation by N. Bernaerts
 //   14/07/2017 - V1.1 - Adapt to use cam-resize.php
 //   02/09/2017 - V2.0 - Rewrite to get cam list and cam pictures from ZoneMinder API
-//   10/11/2017 - V2.1 - Change refresh algo to avoid server overload
-//                       and adjust rate to network
+//   10/11/2017 - V2.1 - Change refresh algo to unload server and optimize refresh rate
+//   17/11/2017 - V2.2 - Remove network topology difference (internet or lan)
 // -------------------------------------------------------
 
 // zoneminder configuration
 require_once ("cam-config.inc");
 
-// set client type (lan or internet)
-$clientIP = $_SERVER['REMOTE_ADDR'];
-$typeZone="internet";
-if ($clientIP == "127.0.0.1") $typeZone = "lan";
-if (substr($clientIP,0,8) == "192.168.") $typeZone = "lan";
-if (substr($clientIP,0,5) == "10.0.") $typeZone = "lan";
-
 // Parameter : Index of first cam on the wall
 $wallIndex = 1;	
 if (isset($_GET["index"])) $wallIndex = $_GET["index"];
+
 // Parameter : Number of camera lines
 $nbrRow = 6;
 if (isset($_GET["row"])) $nbrRow = $_GET["row"];
+
 // Parameter : Number of camera columns
 $nbrColumn = 7;
 if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
+
 // Parameter : Width of the wall (in pixels)
 $wallWidth = 1920;
 if (isset($_GET["width"])) $wallWidth = $_GET["width"];
+
 // Parameter : Height of the wall (in pixels)
 $wallHeight = 1080;
 if (isset($_GET["height"])) $wallHeight = $_GET["height"];
+
 // Parameter : Height of the zoomed picture (in pixels)
 $zoomHeight = 720;
 if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
 
 // calculate size on the wall
 $maxCam = $nbrColumn * $nbrRow;
-$maxThumbWidth  = floor ($wallWidth / $nbrColumn) - 6;
-$maxThumbHeight = floor ($wallHeight / $nbrRow) - 6;
+$maxThumbWidth  = ceil ($wallWidth / $nbrColumn);
+$maxThumbHeight = ceil ($wallHeight / $nbrRow);
+$percentColumn = floor (100 / $nbrColumn);
 
 // login to zoneminder
 $ch=curl_init();
@@ -123,17 +127,14 @@ $nbrCam = count ($arrCam);
 
 <style type="text/css">
 body { background-color:black; }
-div.wall { margin:auto; }
-ul { padding:0px; margin:0px; }
-li { float:left; display:inline; padding:0px; margin:0px; }
-
-li img { padding:1px; border-radius:3px; } 
-li span { position:absolute; z-index:1; padding:1px 5px; border-radius:5px; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; }
-
-@media only screen and (max-width:1280px) { li span { font-size:0.6em;} }
+table { width:100%; border:0px; padding:0px; margin:0px; }
+table tr { padding:0px; margin:0px; }
+table td { padding:0px; margin:0px; width:<?php echo ($percentColumn); ?>%; }
+table img { padding:1px; margin:0px; border-radius:5px; } 
+table span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; color:black; background-color:white; opacity:0.75; font-family:arial,serif; font-size:0.8em; font-style:italic; }
 </style>
 
-<title>SCI La Soie - <?php echo ($nbrCam); ?> caméras (<?php echo ($typeZone); ?>)</title>
+<title><?php echo ($strWallName . " - " . $nbrCam . " cameras"); ?></title>
 <meta charset="UTF-8">
 <script src="/js-global/FancyZoom.js" type="text/javascript"></script>
 <script src="/js-global/FancyZoomHTML.js" type="text/javascript"></script>
@@ -141,6 +142,8 @@ li span { position:absolute; z-index:1; padding:1px 5px; border-radius:5px; back
 
 function updateImage(camIndex)
 {
+	var nbrColumn=<?php echo ($nbrColumn); ?>;
+
 	var camID="cam" + camIndex;
 	if (document.getElementById(camID).complete == true) 
 	{
@@ -148,51 +151,68 @@ function updateImage(camIndex)
 		camIndex++;
 		if (camIndex > <?php echo ($nbrCam); ?>) camIndex=1;
 		camID="cam" + camIndex;
-		var URL=document.getElementById(camID).src;
-		document.getElementById(camID).src=URL.substring(0,URL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
+		imgCam=document.getElementById(camID)
+		var URL=imgCam.src;
+		imgCam.src=URL.substring(0,URL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
 	}
 
 	imgZoom=document.getElementById('ZoomImage');
 	if (imgZoom != null)
 	{
-		if (document.getElementById('ZoomImage').complete == true) 
+		if (imgZoom.complete == true) 
 		{
 			var now=new Date();
-			var URL=document.getElementById('ZoomImage').src;
-			document.getElementById('ZoomImage').src=URL.substring(0,URL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
+			var URL=imgZoom.src;
+			imgZoom.src=URL.substring(0,URL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
 		}
 	}
 
 	setTimeout(function() { updateImage(camIndex); }, 10);
 }
 
-setTimeout(function() { updateImage(1); }, 10);
+setTimeout(function() { updateImage(1); }, 1000);
 
 </script>
 </head>
 
 <body id="wall" onload="setupZoom()">
-<div class="wall">
+<table>
 
 <?php
 
+// initilise counters
+$idxCam = 1;
+$idxRow = 1;
+$idxColumn = 1;
+
 // loop to declare cameras
-$index = 1;
 foreach ($arrCam as $cam) 
 {
 	// calculate label vertical margin according to image size
 	$marginTop = $cam['theight'] - 20;
 
+	// if needed, display new row
+	if ($idxColumn == 1) { echo "<tr>\n"; }
+
 	// display current camera
-	echo ("<li><span style='margin-left:4px; margin-top:" . $marginTop . "px;' >" . $cam['name'] . "</span>");
-	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img id='cam" . $index . "' src='" . $cam['urlthumb'] . "' width=" . $cam['twidth'] . " height=" . $cam['theight'] . "></a>");
-	echo ("</li>\n");
-	$index++;
+	echo ("<td><span style='margin-left:4px; margin-top:2px;' >" . $cam['name'] . "</span>");
+	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "' width=100% ></a>");
+	echo ("</td>\n");
+
+	// increment counters
+	$idxCam++;
+	$idxColumn++;
+
+	// if needed, end row
+	if ($idxColumn > $nbrColumn) { echo "</tr>\n"; $idxColumn = 1; $idxRow++; }
 }
+
+// if needed, end row
+if ($idxColumn > 1) { echo "</tr>\n"; }
 
 ?>
 
-</div>
+</table> 
 </body>
 
 </html>
