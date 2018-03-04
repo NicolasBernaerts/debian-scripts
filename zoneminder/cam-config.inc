@@ -3,7 +3,11 @@
 //        Credentials for ZoneMinder camera wall
 // -------------------------------------------------------
 
-// zoneminder configuration
+
+// Wall name
+$strWallName = "Your wall title";
+
+// zoneminder credentials
 $zmUser = "youruser";
 $zmPass = "yourpassword";
 $zmSecret = "yoursecret";
