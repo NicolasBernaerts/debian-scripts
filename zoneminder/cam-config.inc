@@ -3,7 +3,6 @@
 //        Credentials for ZoneMinder camera wall
 // -------------------------------------------------------
 
-
 // Wall name
 $strWallName = "Your wall title";
 
