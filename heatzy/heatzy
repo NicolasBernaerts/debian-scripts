@@ -1,0 +1,255 @@
+#!/bin/bash
+# ---------------------------------------------------
+# Scipt to handle Heatzy devices
+#
+# Parameters :
+#
+# Revision history :
+#   16/04/2018, V1.0 - Creation by Nicolas Bernaerts
+# ---------------------------------------------------
+
+# -----------------------
+#   Global configration
+# -----------------------
+
+# configuration file (login and password)
+CONFIG_FILE="$HOME/.config/heatzy.conf"
+
+# device states ( "name;state read;state to write" )
+ARR_STATE=( "off;u505cu6b62;[1,1,3]"     \
+            "comfort;u8212u9002;[1,1,0]" \
+            "eco;u7ecfu6d4e;[1,1,1]"     \
+            "freeze;u89e3u51bb;[1,1,2]"  )
+
+# ---------------
+#   Parameters
+# ---------------
+
+# generate states names
+LIST_STATE=$(echo "${ARR_STATE[@]}" | tr " " "\n" | cut -d';' -f1)
+
+# if no argument, display help
+if [ $# -eq 0 ] 
+then
+	echo "Tool to manage Heatzy devices thru Web API"
+	echo "Parameters are :"
+	echo "  --list-devices          List devices (did;alias)"
+	echo "  --did <did>             Select device by did"
+	echo "  --mac <mac>             Select device by mac address"
+	echo "  --alias <alias>         Select device by alias"
+	echo "  --get-state             Get device state ( ${LIST_STATE} )"
+	echo "  --set-state <state>     Set device state ( ${LIST_STATE} )"
+	exit 1
+fi
+
+# loop to retrieve arguments
+while test $# -gt 0
+do
+	case "$1" in
+		"--list-devices") ACTION="list-devices"; shift; ;;
+		"--did") DEVICE_REF="did"; shift; DEVICE_ID="$1"; shift; ;;
+		"--mac") DEVICE_REF="mac"; shift; DEVICE_ID="$1"; shift; ;;
+		"--alias") DEVICE_REF="alias"; shift; DEVICE_ID="$1"; shift; ;;
+		"--get-state") ACTION="get-state"; shift; ;;
+		"--set-state") ACTION="set-state"; shift; DEVICE_STATE="$1"; shift; ;;
+		*) echo "Parameter $1 unknown"; shift; ;;
+	esac
+done
+
+# ------------
+#   Controls
+# ------------
+
+# temporary file
+TMP_DIR=$(mktemp --tmpdir -d "heatzy-XXXXXXXX")
+TMP_JSON="${TMP_DIR}/heatzy.json"
+TMP_CONF="${TMP_DIR}/heatzy.conf"
+
+# check action is set
+[ "${ACTION}" = "" ] && { echo "[error] You must specify an action (--list-devices, --get-state or --set-state)"; exit 1; }
+
+# check config file
+[ ! -f "${CONFIG_FILE}" ] && { echo "[error] Configuration file ${CONFIG_FILE} absent"; exit 1; }
+
+# check device state if provided
+if [ "${DEVICE_STATE}" != "" ]
+then
+	# check if state is in the list
+	STATE_OK=$(echo "${ARR_STATE[@]}" | tr " " "\n" | grep "^${DEVICE_STATE};")
+
+	# error if unknown
+	[ "${STATE_OK}" = "" ] && { echo "[error] Device state ${DEVICE_STATE} is not recognized [ ${ARR_NAME[@]} ]"; exit 1; }
+fi
+
+# if needed, check presence of device id
+[ "${DEVICE_REF}" = "did" -a "${DEVICE_ID}" = "" ] && { echo "[error] Device did missing"; exit 1; }
+
+# if needed, check presence of device alias
+[ "${DEVICE_REF}" = "mac" -a "${DEVICE_ID}" = "" ] && { echo "[error] Device mac address missing"; exit 1; }
+
+# if needed, check presence of device alias
+[ "${DEVICE_REF}" = "alias" -a "${DEVICE_ID}" = "" ] && { echo "[error] Device alias missing"; exit 1; }
+
+# -------------------
+#   Configuration
+# -------------------
+
+# read values
+HEATZY_LOGIN=$(grep "^login=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
+HEATZY_PASSWORD=$(grep "^password=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
+HEATZY_APPID=$(grep "^appid=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
+HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
+
+# check values
+[ "${HEATZY_LOGIN}" = "" ] && { echo "[error] User login is not set in ${CONFIG_FILE}"; exit 1; }
+[ "${HEATZY_PASSWORD}" = "" ] && { echo "[error] User password is not set in ${CONFIG_FILE}"; exit 1; }
+[ "${HEATZY_APPID}" = "" ] && { echo "[error] Application ID is not set in ${CONFIG_FILE}"; exit 1; }
+[ "${HEATZY_TOKEN}" = "" ] && HEATZY_TOKEN="null"
+
+# check if device did or alias is provided, check if device is known
+[ "${DEVICE_REF}" = "did" ] && DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}")
+[ "${DEVICE_REF}" = "mac" ] && DEVICE_KNOWN=$(grep "=${DEVICE_ID};" "${CONFIG_FILE}")
+[ "${DEVICE_REF}" = "alias" ] && DEVICE_KNOWN=$(grep ";${DEVICE_ID}$" "${CONFIG_FILE}")
+
+# if device unknown, list latest devices
+if [ "${DEVICE_REF}" != "" -a "${DEVICE_KNOWN}" = "" ]
+then
+	# list latest devices
+	heatsy --list-devices
+
+	# check again if device did or alias is known
+	[ "${DEVICE_REF}" = "did" ] && DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}")
+	[ "${DEVICE_REF}" = "mac" ] && DEVICE_KNOWN=$(grep "=${DEVICE_ID};" "${CONFIG_FILE}")
+	[ "${DEVICE_REF}" = "alias" ] && DEVICE_KNOWN=$(grep ";${DEVICE_ID}$" "${CONFIG_FILE}")
+fi
+
+# if device is still unknown, error
+[ "${DEVICE_REF}" = "did" -a "${DEVICE_KNOWN}" = "" ] && { echo "[error] Device did unknown"; exit 1; }
+[ "${DEVICE_REF}" = "mac" -a "${DEVICE_KNOWN}" = "" ] && { echo "[error] Device mac address unknown"; exit 1; }
+[ "${DEVICE_REF}" = "alias" -a "${DEVICE_KNOWN}" = "" ] && { echo "[error] Device alias unknown"; exit 1; }
+
+# if device alias is given, convert it to device did
+[ "${DEVICE_REF}" = "mac" -o "${DEVICE_REF}" = "alias" ] && DEVICE_ID=$(echo "${DEVICE_KNOWN}" | cut -d'=' -f1)
+
+# --------------
+#   Parameters
+# --------------
+
+# set command parameters
+case "${ACTION}" in
+
+	# list devices
+	"list-devices")
+		# parameters
+		ARR_PARAM=( "-X" "GET" "--header" "Accept:application/json" "--header" "X-Gizwits-Application-Id:${HEATZY_APPID}" )
+		URL="https://euapi.gizwits.com/app/bindings?limit=20&skip=0"
+		;;
+
+	# get device state
+	"get-state")
+		# parameters
+		ARR_PARAM=( "-X" "GET" "--header" "Accept:application/json" "--header" "X-Gizwits-Application-Id:${HEATZY_APPID}" )
+		URL="https://euapi.gizwits.com/app/devdata/${DEVICE_ID}/latest"
+		;;
+
+	# set device state
+	"set-state")
+		# get state string
+		STATE_STRING=$(echo "${ARR_STATE[@]}" | tr " " "\n" | grep "^${DEVICE_STATE};" | cut -d';' -f3)
+
+		# parameters
+		ARR_PARAM=( "-X" "POST" "--header" "Accept:application/json" "--header" "X-Gizwits-Application-Id:${HEATZY_APPID}" "--header" "Content-Type:application/json" "-d" "{\"raw\":${STATE_STRING}}" )
+		URL="https://euapi.gizwits.com/app/control/${DEVICE_ID}"
+		;;
+
+	# unsupported action
+	*)
+		echo "Action ${ACTION} unknown"
+		exit 1
+		;;
+esac
+
+# --------------
+#   Commands
+# --------------
+
+# first trial
+curl --silent "${ARR_PARAM[@]}" --header "X-Gizwits-User-token:${HEATZY_TOKEN}" "${URL}" > "${TMP_JSON}"
+
+# check for invalid token
+TOKEN_INVALID=$(grep "token invalid" "${TMP_JSON}")
+
+# if invalid token,
+if [ "${TOKEN_INVALID}" != "" ]
+then
+	# send new authentification
+	curl --silent -X "POST" --header "Content-Type:application/json" --header "Accept:application/json" --header "X-Gizwits-Application-Id:${HEATZY_APPID}" -d '{"username":"'${HEATZY_LOGIN}'","password":"'${HEATZY_PASSWORD}'","lang":"en"}' "https://euapi.gizwits.com/app/login" > "${TMP_JSON}"
+
+	# recover new token
+	HEATZY_TOKEN=$(cat "${TMP_JSON}" | tr "," "\n" | grep "token" | cut -d'"' -f4)
+
+	# update token in config file
+	sed -i "/token=/c\token=${HEATZY_TOKEN}" "${CONFIG_FILE}"
+
+	# second trial
+	curl --silent "${ARR_PARAM[@]}" --header "X-Gizwits-User-token:${HEATZY_TOKEN}" "${URL}" > "${TMP_JSON}"
+fi
+
+# ------------------
+#   Process result
+# ------------------
+
+# set command parameters
+case "${ACTION}" in
+
+	# list devices
+	"list-devices")
+		# extract configuration file before [devices] section
+		sed '/\[devices\]/,$d' "${CONFIG_FILE}" > "${TMP_CONF}"
+
+		# extract devices arrays
+		ARR_MAC=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "mac:" | cut -d':' -f2) )
+		ARR_ALIAS=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "dev_alias:" | cut -d':' -f2) )
+		ARR_DID=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "did:" | cut -d':' -f2) )
+
+		# start [devices] section
+		echo "[devices]" >> "${TMP_CONF}"
+ 
+		# get total subscripts in an array
+		NBR_DEVICE=${#ARR_MAC[*]}
+		for (( i=0; i<$NBR_DEVICE; i++ ))
+		do 
+    			echo "${ARR_DID[$i]}=${ARR_MAC[$i]};${ARR_ALIAS[$i]}" >> "${TMP_CONF}"
+		done
+
+		# save updated configuration file
+		mv "${TMP_CONF}" "${CONFIG_FILE}"
+		;;
+
+	# get device state
+	"get-state")
+		# get state string
+		STATE_STRING=$(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d '\\ "' | grep "mode:" | cut -d':' -f2)
+
+		# convert string to device state
+		DEVICE_STATE=$(echo "${ARR_STATE[@]}" | tr ' ' '\n' | grep ";${STATE_STRING};" | cut -d';' -f1)
+
+		# display
+		echo "${DEVICE_STATE}"
+		;;
+
+	# set device state
+	"set-state")
+		# display state string
+		echo "${DEVICE_STATE}"
+		;;
+
+	# unsupported action
+	*)
+		echo "Action ${ACTION} unknown"
+		exit 1
+		;;
+esac
+
+# cleanup
+rm -r "${TMP_DIR}"
