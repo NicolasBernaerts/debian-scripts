@@ -31,13 +31,13 @@ if [ $# -eq 0 ]
 then
 	echo "Tool to manage Heatzy devices thru Web API"
 	echo "Parameters are :"
-	echo "  --list-devices          List devices (did;alias)"
-	echo "  --did <did>             Select device by did"
-	echo "  --mac <mac>             Select device by mac address"
-	echo "  --alias <alias>         Select device by alias"
-	echo "  --get-state             Get device state ( ${LIST_STATE} )"
-	echo "  --set-state <state>     Set device state ( ${LIST_STATE} )"
-	echo "Configuration is set in ${CONFIG_FILE}"
+	echo "  --list             Update devices list on Heatzy account"
+	echo "  --did <did>        Select device by did"
+	echo "  --mac <mac>        Select device by mac address"
+	echo "  --alias <alias>    Select device by alias"
+	echo "  --get              Get device state ( ${LIST_STATE} )"
+	echo "  --set <state>      Set device state ( ${LIST_STATE} )"
+	echo "Configuration file : ${CONFIG_FILE}"
 	exit 1
 fi
 
@@ -45,12 +45,12 @@ fi
 while test $# -gt 0
 do
 	case "$1" in
-		"--list-devices") ACTION="list-devices"; shift; ;;
+		"--list") ACTION="list"; shift; ;;
 		"--did") DEVICE_REF="did"; shift; DEVICE_ID="$1"; shift; ;;
 		"--mac") DEVICE_REF="mac"; shift; DEVICE_ID="$1"; shift; ;;
 		"--alias") DEVICE_REF="alias"; shift; DEVICE_ID="$1"; shift; ;;
-		"--get-state") ACTION="get-state"; shift; ;;
-		"--set-state") ACTION="set-state"; shift; DEVICE_STATE="$1"; shift; ;;
+		"--get") ACTION="get"; shift; ;;
+		"--set") ACTION="set"; shift; DEVICE_STATE="$1"; shift; ;;
 		*) echo "Parameter $1 unknown"; shift; ;;
 	esac
 done
@@ -65,7 +65,7 @@ TMP_JSON="${TMP_DIR}/heatzy.json"
 TMP_CONF="${TMP_DIR}/heatzy.conf"
 
 # check action is set
-[ "${ACTION}" = "" ] && { echo "[error] You must specify an action (--list-devices, --get-state or --set-state)"; exit 1; }
+[ "${ACTION}" = "" ] && { echo "[error] You must specify an action (--list, --get or --set)"; exit 1; }
 
 # check config file
 [ ! -f "${CONFIG_FILE}" ] && { echo "[error] Configuration file ${CONFIG_FILE} absent"; exit 1; }
@@ -114,7 +114,7 @@ HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
 if [ "${DEVICE_REF}" != "" -a "${DEVICE_KNOWN}" = "" ]
 then
 	# list latest devices
-	heatsy --list-devices
+	heatsy --list
 
 	# check again if device did or alias is known
 	[ "${DEVICE_REF}" = "did" ] && DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}")
@@ -138,21 +138,21 @@ fi
 case "${ACTION}" in
 
 	# list devices
-	"list-devices")
+	"list")
 		# parameters
 		ARR_PARAM=( "-X" "GET" "--header" "Accept:application/json" "--header" "X-Gizwits-Application-Id:${HEATZY_APPID}" )
 		URL="https://euapi.gizwits.com/app/bindings?limit=20&skip=0"
 		;;
 
 	# get device state
-	"get-state")
+	"get")
 		# parameters
 		ARR_PARAM=( "-X" "GET" "--header" "Accept:application/json" "--header" "X-Gizwits-Application-Id:${HEATZY_APPID}" )
 		URL="https://euapi.gizwits.com/app/devdata/${DEVICE_ID}/latest"
 		;;
 
 	# set device state
-	"set-state")
+	"set")
 		# get state string
 		STATE_STRING=$(echo "${ARR_STATE[@]}" | tr " " "\n" | grep "^${DEVICE_STATE};" | cut -d';' -f3)
 
@@ -202,7 +202,7 @@ fi
 case "${ACTION}" in
 
 	# list devices
-	"list-devices")
+	"list")
 		# extract configuration file before [devices] section
 		sed '/\[devices\]/,$d' "${CONFIG_FILE}" > "${TMP_CONF}"
 
@@ -218,7 +218,7 @@ case "${ACTION}" in
 		NBR_DEVICE=${#ARR_MAC[*]}
 		for (( i=0; i<$NBR_DEVICE; i++ ))
 		do 
-    			echo "${ARR_DID[$i]}=${ARR_MAC[$i]};${ARR_ALIAS[$i]}" >> "${TMP_CONF}"
+    			echo "${ARR_DID[$i]}=${ARR_MAC[$i]};${ARR_ALIAS[$i]}" | tee --append "${TMP_CONF}"
 		done
 
 		# save updated configuration file
@@ -226,7 +226,7 @@ case "${ACTION}" in
 		;;
 
 	# get device state
-	"get-state")
+	"get")
 		# get state string
 		STATE_STRING=$(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d '\\ "' | grep "mode:" | cut -d':' -f2)
 
@@ -238,7 +238,7 @@ case "${ACTION}" in
 		;;
 
 	# set device state
-	"set-state")
+	"set")
 		# display state string
 		echo "${DEVICE_STATE}"
 		;;
