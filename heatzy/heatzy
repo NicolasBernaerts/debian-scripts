@@ -2,8 +2,6 @@
 # ---------------------------------------------------
 # Scipt to handle Heatzy devices
 #
-# Parameters :
-#
 # Revision history :
 #   16/04/2018, V1.0 - Creation by Nicolas Bernaerts
 # ---------------------------------------------------
@@ -39,6 +37,7 @@ then
 	echo "  --alias <alias>         Select device by alias"
 	echo "  --get-state             Get device state ( ${LIST_STATE} )"
 	echo "  --set-state <state>     Set device state ( ${LIST_STATE} )"
+	echo "Configuration is set in ${CONFIG_FILE}"
 	exit 1
 fi
 
