@@ -24,7 +24,7 @@ ARR_STATE=( "off;u505cu6b62;[1,1,3]"     \
 # ---------------
 
 # generate states names
-LIST_STATE=$(echo "${ARR_STATE[@]}" | tr " " "\n" | cut -d';' -f1)
+LIST_STATE=$(echo "${ARR_STATE[@]}" | tr " " "\n" | cut -d';' -f1 | xargs)
 
 # if no argument, display help
 if [ $# -eq 0 ] 
@@ -34,7 +34,7 @@ then
 	echo "  --list             Update devices list on Heatzy account"
 	echo "  --did <did>        Select device by did"
 	echo "  --mac <mac>        Select device by mac address"
-	echo "  --alias <alias>    Select device by alias"
+	echo "  --alias <alias>    Select device by alias (remove any space)"
 	echo "  --get              Get device state ( ${LIST_STATE} )"
 	echo "  --set <state>      Set device state ( ${LIST_STATE} )"
 	echo "Configuration file : ${CONFIG_FILE}"
@@ -114,7 +114,7 @@ HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
 if [ "${DEVICE_REF}" != "" -a "${DEVICE_KNOWN}" = "" ]
 then
 	# list latest devices
-	heatsy --list
+	heatzy --list
 
 	# check again if device did or alias is known
 	[ "${DEVICE_REF}" = "did" ] && DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}")
@@ -176,7 +176,7 @@ esac
 curl --silent "${ARR_PARAM[@]}" --header "X-Gizwits-User-token:${HEATZY_TOKEN}" "${URL}" > "${TMP_JSON}"
 
 # check for invalid token
-TOKEN_INVALID=$(grep "token invalid" "${TMP_JSON}")
+TOKEN_INVALID=$(grep "token" "${TMP_JSON}")
 
 # if invalid token,
 if [ "${TOKEN_INVALID}" != "" ]
@@ -232,6 +232,9 @@ case "${ACTION}" in
 
 		# convert string to device state
 		DEVICE_STATE=$(echo "${ARR_STATE[@]}" | tr ' ' '\n' | grep ";${STATE_STRING};" | cut -d';' -f1)
+
+		# if no answer, offline
+		[ "${DEVICE_STATE}" = "" ] && DEVICE_STATE="offline"
 
 		# display
 		echo "${DEVICE_STATE}"
