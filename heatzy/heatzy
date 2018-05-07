@@ -4,6 +4,7 @@
 #
 # Revision history :
 #   16/04/2018, V1.0 - Creation by Nicolas Bernaerts
+#   06/05/2018, V1.1 - Add --login and --password
 # ---------------------------------------------------
 
 # -----------------------
@@ -31,11 +32,13 @@ if [ $# -eq 0 ]
 then
 	echo "Tool to manage Heatzy devices thru Web API"
 	echo "Parameters are :"
+	echo "  --login            Heatzy account login"
+	echo "  --password         Heatzy account password"
 	echo "  --list             Update devices list on Heatzy account"
 	echo "  --did <did>        Select device by did"
 	echo "  --mac <mac>        Select device by mac address"
 	echo "  --alias <alias>    Select device by alias (remove any space)"
-	echo "  --get              Get device state ( ${LIST_STATE} )"
+	echo "  --get              Get device state ( ${LIST_STATE} offline )"
 	echo "  --set <state>      Set device state ( ${LIST_STATE} )"
 	echo "Configuration file : ${CONFIG_FILE}"
 	exit 1
@@ -45,6 +48,8 @@ fi
 while test $# -gt 0
 do
 	case "$1" in
+		"--login") shift; LOGIN="$1"; shift; ;;
+		"--password") shift; PASSWORD="$1"; shift; ;;
 		"--list") ACTION="list"; shift; ;;
 		"--did") DEVICE_REF="did"; shift; DEVICE_ID="$1"; shift; ;;
 		"--mac") DEVICE_REF="mac"; shift; DEVICE_ID="$1"; shift; ;;
@@ -93,6 +98,10 @@ fi
 #   Configuration
 # -------------------
 
+# if heatzy account login or password given, update them
+[ "${LOGIN}" != "" ] && sed -i "/login=/c\login=${LOGIN}" "${CONFIG_FILE}"
+[ "${PASSWORD}" != "" ] && sed -i "/password=/c\password=${PASSWORD}" "${CONFIG_FILE}"
+
 # read values
 HEATZY_LOGIN=$(grep "^login=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
 HEATZY_PASSWORD=$(grep "^password=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
@@ -100,15 +109,18 @@ HEATZY_APPID=$(grep "^appid=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
 HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
 
 # check values
-[ "${HEATZY_LOGIN}" = "" ] && { echo "[error] User login is not set in ${CONFIG_FILE}"; exit 1; }
-[ "${HEATZY_PASSWORD}" = "" ] && { echo "[error] User password is not set in ${CONFIG_FILE}"; exit 1; }
+[ "${HEATZY_LOGIN}" = "" ] && { echo "[error] User login not provided and not set in ${CONFIG_FILE}"; exit 1; }
+[ "${HEATZY_PASSWORD}" = "" ] && { echo "[error] User password not provided and not set in ${CONFIG_FILE}"; exit 1; }
 [ "${HEATZY_APPID}" = "" ] && { echo "[error] Application ID is not set in ${CONFIG_FILE}"; exit 1; }
 [ "${HEATZY_TOKEN}" = "" ] && HEATZY_TOKEN="null"
 
 # check if device did or alias is provided, check if device is known
-[ "${DEVICE_REF}" = "did" ] && DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}")
-[ "${DEVICE_REF}" = "mac" ] && DEVICE_KNOWN=$(grep "=${DEVICE_ID};" "${CONFIG_FILE}")
-[ "${DEVICE_REF}" = "alias" ] && DEVICE_KNOWN=$(grep ";${DEVICE_ID}$" "${CONFIG_FILE}")
+case "${DEVICE_REF}" in
+	"did") DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}"); ;;
+	"mac") DEVICE_KNOWN=$(grep "=${DEVICE_ID};" "${CONFIG_FILE}"); ;;
+	"alias") DEVICE_KNOWN=$(grep ";${DEVICE_ID}$" "${CONFIG_FILE}"); ;;
+	*) ;;
+esac
 
 # if device unknown, list latest devices
 if [ "${DEVICE_REF}" != "" -a "${DEVICE_KNOWN}" = "" ]
@@ -117,9 +129,12 @@ then
 	heatzy --list
 
 	# check again if device did or alias is known
-	[ "${DEVICE_REF}" = "did" ] && DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}")
-	[ "${DEVICE_REF}" = "mac" ] && DEVICE_KNOWN=$(grep "=${DEVICE_ID};" "${CONFIG_FILE}")
-	[ "${DEVICE_REF}" = "alias" ] && DEVICE_KNOWN=$(grep ";${DEVICE_ID}$" "${CONFIG_FILE}")
+	case "${DEVICE_REF}" in
+		"did") DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}"); ;;
+		"mac") DEVICE_KNOWN=$(grep "=${DEVICE_ID};" "${CONFIG_FILE}"); ;;
+		"alias") DEVICE_KNOWN=$(grep ";${DEVICE_ID}$" "${CONFIG_FILE}"); ;;
+		*) ;;
+	esac
 fi
 
 # if device is still unknown, error
