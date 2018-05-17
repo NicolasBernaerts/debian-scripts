@@ -16,10 +16,17 @@
 //   02/09/2017 - V2.0 - Rewrite to get cam list and cam pictures from ZoneMinder API
 //   10/11/2017 - V2.1 - Change refresh algo to unload server and optimize refresh rate
 //   17/11/2017 - V2.2 - Remove network topology difference (internet or lan)
+//   15/05/2018 - V2.3 - Add alert status
 // -------------------------------------------------------
 
 // zoneminder configuration
 require_once ("cam-config.inc");
+
+// initialisation
+$countCam     = 0;
+$arrCam       = Array ();
+$arrZMCookie  = Array ();
+$arrCamCookie = Array ();
 
 // Parameter : Index of first cam on the wall
 $wallIndex = 1;	
@@ -42,7 +49,7 @@ $wallHeight = 1080;
 if (isset($_GET["height"])) $wallHeight = $_GET["height"];
 
 // Parameter : Height of the zoomed picture (in pixels)
-$zoomHeight = 720;
+$zoomHeight = 900;
 if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
 
 // calculate size on the wall
@@ -62,14 +69,14 @@ $response=curl_exec($ch);
 curl_close($ch);
 
 // retrieve session cookie
-preg_match_all('/^Set-Cookie:\s*([^;]*)/mi', $response, $arrCookie);
-$cookie = "Cookie: " . $arrCookie[1][0];
+preg_match_all('/^Set-Cookie:\s*([^;]*)/mi', $response, $arrZMCookie);
+$arrCamCookie['session'] = $arrZMCookie[1][0];
 
 // get monitor list
 $ch=curl_init();
 curl_setopt($ch,CURLOPT_RETURNTRANSFER,1);
 curl_setopt($ch,CURLOPT_URL,$zmURL . "/api/monitors.json");
-curl_setopt($ch, CURLOPT_HTTPHEADER, array($cookie));
+curl_setopt($ch, CURLOPT_HTTPHEADER, array("Cookie: " . $arrCamCookie['session']));
 $json=curl_exec($ch);
 curl_close($ch);
 
@@ -81,8 +88,6 @@ foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor) $arrSequence[$idxMo
 asort($arrSequence);
 
 // create camera list from sort monitor sequence
-$countCam = 0;
-$arrCam = Array ();
 foreach ($arrSequence as $idxMonitor => $sequence) 
 {
 	// populate cams array according to start index and wall size
@@ -114,11 +119,17 @@ foreach ($arrSequence as $idxMonitor => $sequence)
 		$arrCam[$sequence]['theight'] = floor ($camHeight * $scaleFactor);
 		$arrCam[$sequence]['urlthumb']  = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
 		$arrCam[$sequence]['urlzoom']   = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
+
+		// prepare cookie array
+		$arrCamCookie['cam'][$countCam] = $monitor["Monitor"]["Id"];
 	}
 }
 
 // number of cameras to display
 $nbrCam = count ($arrCam);
+
+// save array in cookie (to be used by cam-status.php)
+setcookie ('cams', serialize($arrCamCookie), 0);
 ?>
 
 <!doctype html>
@@ -130,8 +141,8 @@ body { background-color:black; }
 table { width:100%; border:0px; padding:0px; margin:0px; }
 table tr { padding:0px; margin:0px; }
 table td { padding:0px; margin:0px; width:<?php echo ($percentColumn); ?>%; }
-table img { padding:1px; margin:0px; border-radius:5px; } 
-table span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; color:black; background-color:white; opacity:0.75; font-family:arial,serif; font-size:0.8em; font-style:italic; }
+table img { padding:1px; margin:0px; border-radius:5px; border:0px solid black; } 
+table span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.75; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
 </style>
 
 <title><?php echo ($strWallName . " - " . $nbrCam . " cameras"); ?></title>
@@ -140,37 +151,64 @@ table span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; c
 <script src="/js-global/FancyZoomHTML.js" type="text/javascript"></script>
 <script type='text/javascript'>
 
+// total number of cams on the wall
+nbrCam="<?php echo ($nbrCam); ?>";
+
 function updateImage(camIndex)
 {
-	var nbrColumn=<?php echo ($nbrColumn); ?>;
+	// get cam image ID
+	camImgId="cam" + camIndex;
 
-	var camID="cam" + camIndex;
-	if (document.getElementById(camID).complete == true) 
+	// if cam image element is fully downloaded
+	if (document.getElementById(camImgId).complete == true) 
 	{
-		var now=new Date();
+		now=new Date();
+
+		// update cam index to next cam
 		camIndex++;
-		if (camIndex > <?php echo ($nbrCam); ?>) camIndex=1;
-		camID="cam" + camIndex;
-		imgCam=document.getElementById(camID)
-		var URL=imgCam.src;
-		imgCam.src=URL.substring(0,URL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
+		if (camIndex > nbrCam) camIndex=1;
+
+		// update next cam URL to force refresh
+		camImgId="cam" + camIndex;
+		camImg=document.getElementById(camImgId);
+		camImgURL=camImg.src;
+		camImg.src=camImgURL.substring(0,camImgURL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
+
+		// get next cam alarm status
+		statusReq = new XMLHttpRequest();
+		statusReq.open("GET", "cam-status.php?index=" + camIndex, true);
+		statusReq.onreadystatechange = function ()
+		{
+			spanId="span" + camIndex;
+			spanObj=document.getElementById(spanId);
+			spanObj.style.backgroundColor = statusReq.responseText;
+		}
+		statusReq.send(null);
 	}
 
-	imgZoom=document.getElementById('ZoomImage');
-	if (imgZoom != null)
+	// get zoom image element
+	zoomImg=document.getElementById('ZoomImage');
+
+	// if zoom image is displayed
+	if (zoomImg != null)
 	{
-		if (imgZoom.complete == true) 
+		// if zoom image element is fully downloaded
+		if (zoomImg.complete == true) 
 		{
-			var now=new Date();
-			var URL=imgZoom.src;
-			imgZoom.src=URL.substring(0,URL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
+			now=new Date();
+
+			// update next cam URL to force refresh
+			zoomImgURL=zoomImg.src;
+			zoomImg.src=zoomImgURL.substring(0,zoomImgURL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
 		}
 	}
 
+	// call update for current camera in 10 ms
 	setTimeout(function() { updateImage(camIndex); }, 10);
 }
 
-setTimeout(function() { updateImage(1); }, 1000);
+// call first update for first camera in 2 s
+setTimeout(function() { updateImage(1); }, 2000);
 
 </script>
 </head>
@@ -195,7 +233,7 @@ foreach ($arrCam as $cam)
 	if ($idxColumn == 1) { echo "<tr>\n"; }
 
 	// display current camera
-	echo ("<td><span style='margin-left:4px; margin-top:2px;' >" . $cam['name'] . "</span>");
+	echo ("<td><span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
 	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "' width=100% ></a>");
 	echo ("</td>\n");
 
@@ -213,6 +251,7 @@ if ($idxColumn > 1) { echo "</tr>\n"; }
 ?>
 
 </table> 
+
 </body>
 
 </html>
