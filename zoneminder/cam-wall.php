@@ -83,7 +83,7 @@ curl_close($ch);
 // convert json to array
 $arrMonitor = json_decode($json, true);
 
-// tri par ordre de sequence
+// sort monitor array in sequence order
 foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor) $arrSequence[$idxMonitor] = $monitor["Monitor"]["Sequence"];
 asort($arrSequence);
 
