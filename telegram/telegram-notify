@@ -162,7 +162,7 @@ then
 elif [ "${NOTIFY_TEXT}" != "" ]
 then
   # display text message
-  curl -"${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage"
+  curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage"
 
 #  else, nothing, error
 else
