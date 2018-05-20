@@ -57,7 +57,7 @@ then
   echo "  --question          Add a question mark icon"
   echo "  --icon <code>       Add an icon by UTF code (ex 1F355)"
   echo "Here is an example of piped text :
-  echo "  # echo 'text to be displayed' | telegram-notify --success --text - "
+  echo "  # echo text to be displayed | telegram-notify --success --text - "
   exit
 fi
 
