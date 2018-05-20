@@ -12,6 +12,7 @@
 #    08/08/2016, V1.3 - Add --document, --html and --silent options
 #    10/11/2016, V1.4 - Add --icon option
 #    11/01/2018, V1.5 - Add possibility of piped text, idea from Yasir Atabani
+#    19/05/2018, V1.6 - Add socks5 proxy option, idea from RangerRU
 # ---------------------------------------------------
 
 # initialise variables
@@ -84,13 +85,19 @@ done
 #   Read configuration
 # -------------------------------------------------------
 
+# check configuration file
+[ ! -f "${FILE_CONF}" ] && { echo "[Error] Configuration file missing ${FILE_CONF}"; exit 1; }
+
 # if needed, load from configuration file
-[ -f "${FILE_CONF}" -a "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
-[ -f "${FILE_CONF}" -a "${USER_ID}" = "" ] && USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
+[ "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
+[ "${USER_ID}" = "" ] && USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
 
 # check API key and User ID
 [ "${API_KEY}" = "" ] && { echo "[Error] Please provide API key or set it in ${FILE_CONF}"; exit 1; }
 [ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
+
+# load socks proxy from configuration file
+SOCKS_PROXY=$(cat "${FILE_CONF}" | grep "socks-proxy=" | cut -d'=' -f2)
 
 # -------------------------------------------------------
 #   Check for file existence
@@ -133,23 +140,29 @@ fi
 #   Notification
 # -------------------------------------------------------
 
+# default option
+ARR_OPTIONS=( "--silent" "--insecure" )
+
+# if needed, socks5 option
+[ "${SOCKS_PROXY}" != "" ] && ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--socks5-hostname" "${SOCKS_PROXY}" )
+
 # if photo defined, display it with icon and caption
 if [ "${PICTURE}" != "" ]
 then
   # display image
-  curl --silent --insecure --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto" 
+  curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto" 
 
 # if document defined, send it with icon and caption
 elif [ "${DOCUMENT}" != "" ]
 then
   # transfer document
-  curl --silent --insecure --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument" 
+  curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument" 
 
 # else, if text is defined, display it with icon and title
 elif [ "${NOTIFY_TEXT}" != "" ]
 then
   # display text message
-  curl --silent --insecure --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage"
+  curl -"${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage"
 
 #  else, nothing, error
 else
