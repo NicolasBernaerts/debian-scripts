@@ -13,6 +13,7 @@
 #    10/11/2016, V1.4 - Add --icon option
 #    11/01/2018, V1.5 - Add possibility of piped text, idea from Yasir Atabani
 #    19/05/2018, V1.6 - Add socks5 proxy option, idea from RangerRU
+#    28/06/2018, V1.7 - Add --warning and --config options, idea from Markus Hof
 # ---------------------------------------------------
 
 # initialise variables
@@ -49,10 +50,12 @@ then
   echo "  --title <title>     Title of the message (if text message)"
   echo "  --html              Use HTML mode for text content (markdown by default)"
   echo "  --silent            Send message in silent mode (no user notification on the client)"
+  echo "  --config <file>     use alternate config file, instead of default ${FILE_CONF}"
   echo "  --user <user-id>    Recipient User or Channel ID (replaces user-id= in ${FILE_CONF})"
   echo "  --key <api-key>     API Key of your Telegram bot (replaces api-key= in ${FILE_CONF})"
   echo "Optionnal icons are :"
   echo "  --success           Add a success icon"
+  echo "  --warning           Add a warning icon"
   echo "  --error             Add an error icon"
   echo "  --question          Add a question mark icon"
   echo "  --icon <code>       Add an icon by UTF code (ex 1F355)"
@@ -71,9 +74,11 @@ do
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
     "--html") DISPLAY_MODE="html"; shift; ;;
     "--silent") DISPLAY_SILENT="true"; shift; ;;
+    "--config") shift; FILE_CONF="$1"; shift; ;;
     "--user") shift; USER_ID="$1"; shift; ;;
     "--key") shift; API_KEY="$1"; shift; ;;
     "--success") DISPLAY_ICON=$(echo -e "\U2705"); shift; ;;
+    "--warning") DISPLAY_ICON=$(echo -e "\U26A0"); shift; ;;
     "--error") DISPLAY_ICON=$(echo -e "\U1F6A8"); shift; ;;
     "--question") DISPLAY_ICON=$(echo -e "\U2753"); shift; ;;
     "--icon") shift; DISPLAY_ICON=$(echo -e "\U$1"); shift; ;;
