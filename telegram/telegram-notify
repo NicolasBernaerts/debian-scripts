@@ -90,19 +90,26 @@ done
 #   Read configuration
 # -------------------------------------------------------
 
-# check configuration file
-[ ! -f "${FILE_CONF}" ] && { echo "[Error] Configuration file missing ${FILE_CONF}"; exit 1; }
+# if configuration file is present
+if [ -f "${FILE_CONF}" ]
+then
+	# display
+	echo "[Info] Using configuration file ${FILE_CONF}"
 
-# if needed, load from configuration file
-[ "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
-[ "${USER_ID}" = "" ] && USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
+	# if needed, load from configuration file
+	[ "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
+	[ "${USER_ID}" = "" ] && USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
+
+	# load socks proxy from configuration file
+	SOCKS_PROXY=$(cat "${FILE_CONF}" | grep "socks-proxy=" | cut -d'=' -f2)
+else
+	# display
+	echo "[Warning] Configuration file missing ${FILE_CONF}"
+fi
 
 # check API key and User ID
 [ "${API_KEY}" = "" ] && { echo "[Error] Please provide API key or set it in ${FILE_CONF}"; exit 1; }
 [ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
-
-# load socks proxy from configuration file
-SOCKS_PROXY=$(cat "${FILE_CONF}" | grep "socks-proxy=" | cut -d'=' -f2)
 
 # -------------------------------------------------------
 #   Check for file existence
