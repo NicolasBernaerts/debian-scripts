@@ -6,6 +6,7 @@
 #   16/04/2018, V1.0 - Creation by Nicolas Bernaerts
 #   06/05/2018, V1.1 - Add --login and --password
 #   10/08/2018, V1.2 - Strengthen json parsing
+#   12/08/2018, V1.3 - Add some device informations in --list
 # ---------------------------------------------------
 
 # -----------------------
@@ -222,19 +223,30 @@ case "${ACTION}" in
 		# extract configuration file before [devices] section
 		sed '/\[devices\]/,$d' "${CONFIG_FILE}" > "${TMP_CONF}"
 
-		# extract devices arrays
-		ARR_MAC=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "^mac:" | cut -d':' -f2) )
-		ARR_ALIAS=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "^dev_alias:" | cut -d':' -f2) )
-		ARR_DID=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "^did:" | cut -d':' -f2) )
+                # extract devices arrays
+                TMP_DATA=$(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "')
+                ARR_MAC=( $(echo "${TMP_DATA}" | grep "^mac:" | cut -d':' -f2) )
+                ARR_ALIAS=( $(echo "${TMP_DATA}" | grep "^dev_alias:" | cut -d':' -f2) )
+                ARR_DID=( $(echo "${TMP_DATA}" | grep "^did:" | cut -d':' -f2) )
+                ARR_VER=( $(echo "${TMP_DATA}" | grep "^wifi_soft_version:" | cut -d':' -f2) )
+                ARR_ONLINE=( $(echo "${TMP_DATA}" | grep "^is_online:" | cut -d':' -f2) )
 
 		# start [devices] section
 		echo "[devices]" >> "${TMP_CONF}"
  
-		# get total subscripts in an array
+		# loop thru detected devices
 		NBR_DEVICE=${#ARR_MAC[*]}
 		for (( i=0; i<$NBR_DEVICE; i++ ))
 		do 
-    			echo "${ARR_DID[$i]}=${ARR_MAC[$i]};${ARR_ALIAS[$i]}" | tee --append "${TMP_CONF}"
+                         # display device data
+                        echo "[$i] ${ARR_ALIAS[$i]}"
+                        echo "    Did     : ${ARR_DID[$i]}"
+                        echo "    Mac     : ${ARR_MAC[$i]}"
+                        echo "    Version : ${ARR_VER[$i]}"
+                        echo "    Online  : ${ARR_ONLINE[$i]}"
+
+                        # udate configuration file
+                        echo "${ARR_DID[$i]}=${ARR_MAC[$i]};${ARR_ALIAS[$i]}" >> "${TMP_CONF}"
 		done
 
 		# save updated configuration file
