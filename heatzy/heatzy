@@ -5,6 +5,7 @@
 # Revision history :
 #   16/04/2018, V1.0 - Creation by Nicolas Bernaerts
 #   06/05/2018, V1.1 - Add --login and --password
+#   10/08/2018, V1.2 - Strengthen json parsing
 # ---------------------------------------------------
 
 # -----------------------
@@ -222,9 +223,9 @@ case "${ACTION}" in
 		sed '/\[devices\]/,$d' "${CONFIG_FILE}" > "${TMP_CONF}"
 
 		# extract devices arrays
-		ARR_MAC=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "mac:" | cut -d':' -f2) )
-		ARR_ALIAS=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "dev_alias:" | cut -d':' -f2) )
-		ARR_DID=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "did:" | cut -d':' -f2) )
+		ARR_MAC=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "^mac:" | cut -d':' -f2) )
+		ARR_ALIAS=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "^dev_alias:" | cut -d':' -f2) )
+		ARR_DID=( $(cat "${TMP_JSON}" | tr '{},' '\n' | tr -d ' "' | grep "^did:" | cut -d':' -f2) )
 
 		# start [devices] section
 		echo "[devices]" >> "${TMP_CONF}"
