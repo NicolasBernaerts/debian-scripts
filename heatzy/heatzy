@@ -193,7 +193,7 @@ curl --silent "${ARR_PARAM[@]}" --header "X-Gizwits-User-token:${HEATZY_TOKEN}" 
 # check for invalid token
 TOKEN_INVALID=$(grep "token" "${TMP_JSON}")
 
-# if invalid token,
+# if invalid token, renew token and second trial
 if [ "${TOKEN_INVALID}" != "" ]
 then
 	# send new authentification
@@ -263,7 +263,7 @@ case "${ACTION}" in
 
 	# unsupported action
 	*)
-		echo "Action ${ACTION} unknown"
+		echo "[error] Action ${ACTION} unknown"
 		exit 1
 		;;
 esac
