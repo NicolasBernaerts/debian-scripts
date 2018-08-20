@@ -7,6 +7,7 @@
 #   06/05/2018, V1.1 - Add --login and --password
 #   10/08/2018, V1.2 - Strengthen json parsing
 #   12/08/2018, V1.3 - Add some device informations in --list
+#   18/08/2018, V1.4 - Place configuration file in home directory
 # ---------------------------------------------------
 
 # -----------------------
@@ -65,11 +66,6 @@ done
 # ------------
 #   Controls
 # ------------
-
-# temporary file
-TMP_DIR=$(mktemp --tmpdir -d "heatzy-XXXXXXXX")
-TMP_JSON="${TMP_DIR}/heatzy.json"
-TMP_CONF="${TMP_DIR}/heatzy.conf"
 
 # check action is set
 [ "${ACTION}" = "" ] && { echo "[error] You must specify an action (--list, --get or --set)"; exit 1; }
@@ -146,6 +142,15 @@ fi
 
 # if device alias is given, convert it to device did
 [ "${DEVICE_REF}" = "mac" -o "${DEVICE_REF}" = "alias" ] && DEVICE_ID=$(echo "${DEVICE_KNOWN}" | cut -d'=' -f1)
+
+# ------------------
+#   Initialisation
+# ------------------
+
+# temporary file
+TMP_DIR=$(mktemp --tmpdir -d "heatzy-XXXXXXXX")
+TMP_JSON="${TMP_DIR}/heatzy.json"
+TMP_CONF="${TMP_DIR}/heatzy.conf"
 
 # --------------
 #   Parameters
@@ -277,7 +282,6 @@ case "${ACTION}" in
 	# unsupported action
 	*)
 		echo "[error] Action ${ACTION} unknown"
-		exit 1
 		;;
 esac
 
