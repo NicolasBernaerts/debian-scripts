@@ -14,7 +14,7 @@
 # -----------------------
 
 # configuration file (login and password)
-CONFIG_FILE="$HOME/.config/heatzy.conf"
+CONFIG_FILE="$HOME/.heatzy.conf"
 
 # device states ( "name;state read;state to write" )
 ARR_STATE=( "off;u505cu6b62;[1,1,3]"     \
