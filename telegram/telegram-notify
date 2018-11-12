@@ -116,10 +116,10 @@ fi
 # -------------------------------------------------------
 
 # if picture, check for image file
-[ "${PICTURE}" != "" -a ! -f "${PICTURE}" ] && { echo "[error] Image file ${PICTURE} doesn't exist"; exit; }
+[ "${PICTURE}" != "" -a ! -f "${PICTURE}" ] && { echo "[error] Image file ${PICTURE} doesn't exist"; exit 1; }
 
 # if document, check for document file
-[ "${DOCUMENT}" != "" -a ! -f "${DOCUMENT}" ] && { echo "[error] Document file ${DOCUMENT} doesn't exist"; exit; }
+[ "${DOCUMENT}" != "" -a ! -f "${DOCUMENT}" ] && { echo "[error] Document file ${DOCUMENT} doesn't exist"; exit 1; }
 
 # -------------------------------------------------------
 #   String preparation : space and line break
@@ -162,25 +162,29 @@ ARR_OPTIONS=( "--silent" "--insecure" )
 if [ "${PICTURE}" != "" ]
 then
   # display image
-  curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto" 
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto")
 
 # if document defined, send it with icon and caption
 elif [ "${DOCUMENT}" != "" ]
 then
   # transfer document
-  curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument" 
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument")
 
 # else, if text is defined, display it with icon and title
 elif [ "${NOTIFY_TEXT}" != "" ]
 then
   # display text message
-  curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage"
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage")
 
 #  else, nothing, error
 else
   # error message
   echo "[Error] Nothing to notify"
+  exit 1
 fi
+
+# check curl request result
+echo ${CURL_RESULT} | grep '"ok":true' > /dev/null || { echo ${CURL_RESULT}; exit 1; }
 
 # end
 exit 0
