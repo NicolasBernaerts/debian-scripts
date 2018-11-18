@@ -2,13 +2,16 @@
 // -------------------------------------------------------
 // Webcam image wall display, based on ZoneMinder config
 //
-// Parameters :
-//   index  - Index of first cam to display on the wall
+// Display parameters :
 //   row    - Number of camera rows on the wall
 //   column - Number of camera per row on the wall
 //   width  - Width of the wall in pixels (default = 1980px)
 //   height - Height of the wall in pixels (default = 1080px)
 //   zoom   - Height of a zoomed image in pixels (default = 720px)
+//
+// Camera selection :
+//   index  - Index of first cam to display in ZM sequence list
+//   cams   - ordered list of cams to display using ZM mid (exemple : 1-10-4-8-14-2)
 //
 // Revision history :
 //   07/06/2017 - V1.0 - Creation by N. Bernaerts
@@ -17,20 +20,17 @@
 //   10/11/2017 - V2.1 - Change refresh algo to unload server and optimize refresh rate
 //   17/11/2017 - V2.2 - Remove network topology difference (internet or lan)
 //   15/05/2018 - V2.3 - Add alert status
+//   18/11/2018 - V2.4 - Add cams parameter to specify camera list to be displayed
 // -------------------------------------------------------
 
 // zoneminder configuration
 require_once ("cam-config.inc");
 
 // initialisation
-$countCam     = 0;
 $arrCam       = Array ();
+$arrDisplay   = Array ();
 $arrZMCookie  = Array ();
 $arrCamCookie = Array ();
-
-// Parameter : Index of first cam on the wall
-$wallIndex = 1;	
-if (isset($_GET["index"])) $wallIndex = $_GET["index"];
 
 // Parameter : Number of camera lines
 $nbrRow = 6;
@@ -51,6 +51,13 @@ if (isset($_GET["height"])) $wallHeight = $_GET["height"];
 // Parameter : Height of the zoomed picture (in pixels)
 $zoomHeight = 900;
 if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
+
+// Parameter : Index of first cam on the wall
+$wallIndex = 1;	
+if (isset($_GET["index"])) $wallIndex = $_GET["index"];
+
+// Parameter : List of cams to display
+if (isset($_GET["cams"])) $lstCam = $_GET["cams"];
 
 // calculate size on the wall
 $maxCam = $nbrColumn * $nbrRow;
@@ -83,46 +90,78 @@ curl_close($ch);
 // convert json to array
 $arrMonitor = json_decode($json, true);
 
-// sort monitor array in sequence order
-foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor) $arrSequence[$idxMonitor] = $monitor["Monitor"]["Sequence"];
-asort($arrSequence);
-
-// create camera list from sort monitor sequence
-foreach ($arrSequence as $idxMonitor => $sequence) 
+// if monitors list is provided, generate array of cams to be displayed
+if (isset($lstCam))
 {
-	// populate cams array according to start index and wall size
-	if (($sequence >= $wallIndex) && ($countCam < $maxCam))
+	// loop thru candidates
+	$arrCandidate = explode ("-", $lstCam);
+	foreach ($arrCandidate as $idxCandidate)
 	{
-		// increment counter
-		$countCam++;
-
-		// get monitor data
-		$monitor = $arrMonitor["monitors"][$idxMonitor];
-
-		// calculate scale factor
-		$camWidth = $monitor["Monitor"]["Width"];
-		$camHeight = $monitor["Monitor"]["Height"];
-		$scaleWidth = $maxThumbWidth / $camWidth;
-		$scaleHeight = $maxThumbHeight / $camHeight;
-		$scaleFactor = min ($scaleWidth, $scaleHeight);
-
-		// calculate thumb and zoom scaling
-		$scaleThumb = round (100 * $scaleFactor) + 1;
-		$scaleZoom = round (100 * $zoomHeight / $camHeight) + 1;
-
-		// add cam to array
-		$arrCam[$sequence]['id']     = $monitor["Monitor"]["Id"];
-		$arrCam[$sequence]['name']   = $monitor["Monitor"]["Name"];
-		$arrCam[$sequence]['width']  = $camWidth;
-		$arrCam[$sequence]['height'] = $camHeight;
-		$arrCam[$sequence]['twidth']  = floor ($camWidth * $scaleFactor);
-		$arrCam[$sequence]['theight'] = floor ($camHeight * $scaleFactor);
-		$arrCam[$sequence]['urlthumb']  = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
-		$arrCam[$sequence]['urlzoom']   = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
-
-		// prepare cookie array
-		$arrCamCookie['cam'][$countCam] = $monitor["Monitor"]["Id"];
+		// loop thru monitors to get their Id
+		foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor)
+		{
+			// if monitor index is candidate, add it to the display list
+			if ($idxCandidate == $monitor["Monitor"]["Id"]) $arrDisplay[] = $idxMonitor;
+		}
 	}
+}
+
+// if no list provided, generate ordered list from start index and max number of cams
+if (empty($arrDisplay))
+{
+	// sort monitor array in sequence order
+	foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor) $arrOrdered[$idxMonitor] = $monitor["Monitor"]["Sequence"];
+	asort($arrOrdered);
+	
+	// loop thru ordered monitors to add monitorr to the array of cams to be displayed
+	$count = 0;
+	foreach ($arrOrdered as $idxMonitor => $idxDisplay) 
+	{
+		// populate cams array according to start index and wall size
+		if (($idxDisplay >= $wallIndex) && ($count < $maxCam))
+		{
+			// add monitor to display list
+			$arrDisplay[] = $idxMonitor;
+
+			// increment counter
+			$count++;
+		}
+	}
+}
+
+// create camera array from sorted array of cams to be displayed
+$count = 0;
+foreach ($arrDisplay as $idxDisplay => $idxMonitor) 
+{
+	// increment counter
+	$count++;
+
+	// get monitor data
+	$monitor = $arrMonitor["monitors"][$idxMonitor];
+
+	// calculate scale factor
+	$camWidth = $monitor["Monitor"]["Width"];
+	$camHeight = $monitor["Monitor"]["Height"];
+	$scaleWidth = $maxThumbWidth / $camWidth;
+	$scaleHeight = $maxThumbHeight / $camHeight;
+	$scaleFactor = min ($scaleWidth, $scaleHeight);
+
+	// calculate thumb and zoom scaling
+	$scaleThumb = ceil (100 * $scaleFactor);
+	$scaleZoom = ceil (100 * $zoomHeight / $camHeight);
+
+	// add cam to array
+	$arrCam[$idxDisplay]['id']     = $monitor["Monitor"]["Id"];
+	$arrCam[$idxDisplay]['name']   = $monitor["Monitor"]["Name"];
+	$arrCam[$idxDisplay]['width']  = $camWidth;
+	$arrCam[$idxDisplay]['height'] = $camHeight;
+	$arrCam[$idxDisplay]['twidth']  = floor ($camWidth * $scaleFactor);
+	$arrCam[$idxDisplay]['theight'] = floor ($camHeight * $scaleFactor);
+	$arrCam[$idxDisplay]['urlthumb']  = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
+	$arrCam[$idxDisplay]['urlzoom']   = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
+
+	// prepare cookie array
+	$arrCamCookie['cam'][$count] = $monitor["Monitor"]["Id"];
 }
 
 // number of cameras to display
@@ -142,7 +181,7 @@ table { width:100%; border:0px; padding:0px; margin:0px; }
 table tr { padding:0px; margin:0px; }
 table td { padding:0px; margin:0px; width:<?php echo ($percentColumn); ?>%; }
 table img { padding:1px; margin:0px; border-radius:5px; border:0px solid black; } 
-table span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.75; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
+table span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
 </style>
 
 <title><?php echo ($strWallName . " - " . $nbrCam . " cameras"); ?></title>
