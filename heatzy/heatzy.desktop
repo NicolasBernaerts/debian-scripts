@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Exec=/usr/local/bin/heatzy-gui
+Name[en_US]=Control Heatzy pilote device
+Name[en]=Control Heatzy pilote device
+Name[C]=Control Heatzy pilote device
+Name[fr_FR]=Contrôle de vos Heatzy pilote
+Comment=Tool to control Heatzy pilote devices.
+Comment[en_US]=Tool to control Heatzy pilote devices.
+Comment[fr_FR]=Outil pour contrôler vos Heatzy pilote
+Categories=GNOME;Tools
+MimeType=
+Icon=heatzy-pilote
