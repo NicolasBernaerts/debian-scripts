@@ -1,4 +1,4 @@
-Heatzy Pilote
+**Heatzy Pilote**
 
 These scripts are used to control Heatzy pilote devices from command line or from a simple GUI.
 
