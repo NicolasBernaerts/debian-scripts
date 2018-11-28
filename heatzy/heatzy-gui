@@ -42,24 +42,28 @@ HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
 if [ "${HEATZY_TOKEN}" = "" ]
 then
 	# ask for login and password
-	ANSWER=$(yad --center --width 500 --title "Heatzy pilote initialisation" --text "You first need to enter your Heatzy account login and password" --window-icon "/usr/share/icons/heatzy-pilote.png" --image "heatzy-pilote" --form --field="Login" "" --field="Password:H" "")
+	ANSWER=$(yad --center --width 500 --separator='#' --title "Heatzy pilote initialisation" --text "You first need to enter your Heatzy account login and password" --window-icon "/usr/share/icons/heatzy-pilote.png" --image "heatzy-pilote" --form --field="Login" "" --field="Password:H" "")
 
-	# extract login and password
-	HEATZY_LOGIN=$(echo "${ANSWER}" | cut -d'|' -f1)
-	HEATZY_PASSW=$(echo "${ANSWER}" | cut -d'|' -f2)
+	# if selection validated
+	if [ "${ANSWER}" != "" ]
+	then
+		# extract login and password
+		HEATZY_LOGIN=$(echo "${ANSWER}" | cut -d'#' -f1)
+		HEATZY_PASSW=$(echo "${ANSWER}" | cut -d'#' -f2)
 
-	# heatzy login attempt
-	[ "${HEATZY_LOGIN}" != "" -a "${HEATZY_PASSWORD}" != "" ] && heatzy --update --silent --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSWORD}"
+		# heatzy login attempt
+		[ "${HEATZY_LOGIN}" != "" -a "${HEATZY_PASSW}" != "" ] && heatzy --update --silent --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSW}"
 
-	# re-read token from configuration
-	HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
+		# re-read token from configuration
+		HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
+	fi
 fi
 
 # if token undefined,
 if [ "${HEATZY_TOKEN}" = "" ]
 then
 	# login failed
-	yad --center --error --text="login failed to Heatzy server. Check login and password."
+	zenity --error --text="login failed to Heatzy server. Check login and password."
 
 	# exit
 	exit 1
