@@ -1,0 +1,137 @@
+#!/bin/bash
+# ---------------------------------------------------
+# GUI to manage Heatzy pilote devices
+#
+# Revision history :
+#   27/11/2018, V1.0 - Creation by Nicolas Bernaerts
+# ---------------------------------------------------
+
+# -----------------------
+#   Global configration
+# -----------------------
+
+# configuration file (login and password)
+CONFIG_FILE="$HOME/.config/heatzy.conf"
+
+# device states
+LIST_STATE="comfort#off#eco#anti-freeze"
+
+# ------------
+#   Controls
+# ------------
+
+# check tools availability
+command -v yad >/dev/null 2>&1 || { zenity --error --text="Please install yad"; exit 1; }
+command -v heatzy >/dev/null 2>&1 || { zenity --error --text="Please install heatzy script"; exit 1; }
+
+# check config file
+[ ! -f "${CONFIG_FILE}" ] && { zenity --error --text="Configuration file ${CONFIG_FILE} missing"; exit 1; }
+
+# read token from configuration
+HEATZY_APPID=$(grep "^appid=" "${CONFIG_FILE}" | cut -d'=' -f2)
+HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
+
+# appid missing
+[ "${HEATZY_APPID}" = "" ] && { zenity --error --text="appid should be set in ${CONFIG_FILE}"; exit 1; }
+
+# -------------------
+#   First launch
+# -------------------
+
+# if no previous token, ask forlogin and password
+if [ "${HEATZY_TOKEN}" = "" ]
+then
+	# ask for login and password
+	ANSWER=$(yad --center --width 500 --title "Heatzy pilote initialisation" --text "You first need to enter your Heatzy account login and password" --window-icon "/usr/share/icons/heatzy-pilote.png" --image "heatzy-pilote" --form --field="Login" "" --field="Password:H" "")
+
+	# extract login and password
+	HEATZY_LOGIN=$(echo "${ANSWER}" | cut -d'|' -f1)
+	HEATZY_PASSW=$(echo "${ANSWER}" | cut -d'|' -f2)
+
+	# heatzy login attempt
+	[ "${HEATZY_LOGIN}" != "" -a "${HEATZY_PASSWORD}" != "" ] && heatzy --update --silent --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSWORD}"
+
+	# re-read token from configuration
+	HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
+fi
+
+# if token undefined,
+if [ "${HEATZY_TOKEN}" = "" ]
+then
+	# login failed
+	yad --center --error --text="login failed to Heatzy server. Check login and password."
+
+	# exit
+	exit 1
+
+# else, token is ok
+else
+	# temporary file
+	TMP_FILE=$(mktemp --tmpdir "heatzy-XXXXXXXX")
+
+	# set default dialog box params
+	ARR_PARAM=( "--title" "Heatzy pilote control" "--text" "Select your Heatzy pilote state" )
+	ARR_PARAM=( "${ARR_PARAM[@]}" "--window-icon" "/usr/share/icons/heatzy-pilote.png" "--image" "heatzy-pilote" )
+	ARR_PARAM=( "${ARR_PARAM[@]}" "--form" ) 
+
+	# get list of heatzy pilote devices
+	sed -e '1,/\[devices\]/d' "${CONFIG_FILE}" > "${TMP_FILE}"
+
+	while read DEVICE           
+	do
+		# extract device data
+		DEVICE_DID=$(echo "${DEVICE}" | cut -d'=' -f1)
+		DEVICE_ALIAS=$(echo "${DEVICE}" | cut -d';' -f2)
+
+		# read device state
+		DEVICE_STATE=$(heatzy --get --did "${DEVICE_DID}")
+
+		# add to device array
+		ARR_DID=( "${ARR_DID[@]}" "${DEVICE_DID}" )
+		ARR_ORG=( "${ARR_ORG[@]}" "${DEVICE_STATE}" )
+		ARR_ALIAS=( "${ARR_ALIAS[@]}" "${DEVICE_ALIAS}" )
+
+		# setup control to display
+		if [ "${DEVICE_STATE}" = "offline" ]
+		then
+			# device state and control
+			STATE="${DEVICE_STATE}"
+			CONTROL="RO"
+		else
+			# device state and control
+			STATE=$(echo "${LIST_STATE}" | sed "s/${DEVICE_STATE}/^${DEVICE_STATE}/")
+			CONTROL="CB"
+		fi
+
+		# add dialog box parameters for device
+		ARR_PARAM=( "${ARR_PARAM[@]}" "--field=${DEVICE_ALIAS}        :${CONTROL}" "${STATE}" )
+	done < "${TMP_FILE}"
+
+	# display dialog box
+	RESULT=$(yad --center --width 400 --separator='#' --item-separator='#' "${ARR_PARAM[@]}")
+
+	# if selection validated
+	if [ "${RESULT}" != "" ]
+	then
+		# explode result into array
+		#IFS='|' read -r -a ARR_NEW <<< "${RESULT}"
+		ARR_NEW=( $(echo "${RESULT}" | tr '#' '\n') )
+
+		# loop thru devices
+		for ((i=0; i < ${#ARR_DID[@]}; i++))
+		do
+			# if device has changed state,
+			if [ "${ARR_NEW[$i]}" != "${ARR_ORG[$i]}" ]
+			then
+				# send command
+				RESULT=$(heatzy --did "${ARR_DID[$i]}" --set "${ARR_NEW[$i]}")
+
+				# send notification
+				zenity --notification --text "${ARR_ALIAS[$i]} set to ${RESULT}" "--window-icon=heatzy-pilote"
+			fi
+		done
+	fi
+
+	# clenup temporary file
+	rm "${TMP_FILE}"
+fi
