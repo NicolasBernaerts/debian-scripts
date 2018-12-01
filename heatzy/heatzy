@@ -22,7 +22,7 @@ CONFIG_FILE="$HOME/.config/heatzy.conf"
 ARR_STATE=( "off;u505cu6b62;[1,1,3]"     \
             "comfort;u8212u9002;[1,1,0]" \
             "eco;u7ecfu6d4e;[1,1,1]"     \
-            "freeze;u89e3u51bb;[1,1,2]"  )
+            "anti-freeze;u89e3u51bb;[1,1,2]"  )
 
 # ---------------
 #   Parameters
@@ -127,7 +127,7 @@ HEATZY_EXPIRY=$(grep "^expiry=" "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d '\r\n')
 if [ "${DEVICE_REF}" != "" -a "${DEVICE_KNOWN}" = "" ]
 then
 	# list latest devices
-	heatzy --list --silent
+	heatzy --update --silent
 
 	# check again if device did or alias is known
 	[ "${DEVICE_REF}" = "did" ] && DEVICE_KNOWN=$(grep "^${DEVICE_ID}=" "${CONFIG_FILE}")
