@@ -75,7 +75,7 @@ else
 	TMP_FILE=$(mktemp --tmpdir "heatzy-XXXXXXXX")
 
 	# set default dialog box params
-	ARR_PARAM=( "--title" "Heatzy pilote" "--text" "Select your Heatzy pilote state" )
+	ARR_PARAM=( "--title" "Heatzy pilote management" "--text" "Set the state of your Heatzy pilote devices" )
 	ARR_PARAM=( "${ARR_PARAM[@]}" "--window-icon" "/usr/share/icons/heatzy-pilote.png" "--image" "heatzy-pilote" )
 	ARR_PARAM=( "${ARR_PARAM[@]}" "--form" ) 
 
