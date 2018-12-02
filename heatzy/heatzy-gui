@@ -4,6 +4,7 @@
 #
 # Revision history :
 #   27/11/2018, V1.0 - Creation by Nicolas Bernaerts
+#   30/11/2018, V1.1 - Update and infinite loop
 # ---------------------------------------------------
 
 # -----------------------
@@ -35,6 +36,16 @@ HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
 [ "${HEATZY_APPID}" = "" ] && { zenity --error --text="appid should be set in ${CONFIG_FILE}"; exit 1; }
 
 # -------------------
+#   Initialisation
+# -------------------
+
+# temporary file
+TMP_FILE=$(mktemp --tmpdir "heatzy-XXXXXXXX")
+
+# default dialog box result
+DIALOG_CHOICE=""
+
+# -------------------
 #   First launch
 # -------------------
 
@@ -47,37 +58,40 @@ then
 		--form --field="Login" "" --field="Password:H" "" )
 
 	# if cancel, exit
-	[ "${ANSWER}" = "" ] && exit 1
+	if [ "${ANSWER}" = "" ]
+	then
+		# will exit
+		DIALOG_CHOICE="1"
+	else
+		# extract login and password
+		HEATZY_LOGIN=$(echo "${ANSWER}" | cut -d'#' -f1)
+		HEATZY_PASSW=$(echo "${ANSWER}" | cut -d'#' -f2)
 
-	# extract login and password
-	HEATZY_LOGIN=$(echo "${ANSWER}" | cut -d'#' -f1)
-	HEATZY_PASSW=$(echo "${ANSWER}" | cut -d'#' -f2)
+		# heatzy login attempt
+		[ "${HEATZY_LOGIN}" != "" -a "${HEATZY_PASSW}" != "" ] && heatzy --update --silent --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSW}"
 
-	# heatzy login attempt
-	[ "${HEATZY_LOGIN}" != "" -a "${HEATZY_PASSW}" != "" ] && heatzy --update --silent --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSW}"
+		# re-read token from configuration
+		HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
 
-	# re-read token from configuration
-	HEATZY_TOKEN=$(grep "^token=" "${CONFIG_FILE}" | cut -d'=' -f2)
+		# if token still ndefined,
+		if [ "${HEATZY_TOKEN}" = "" ]
+		then
+			# login failed
+			zenity --error --title="Heatzy pilote" --text="Login failed to Heatzy server\nCheck your login and password"
+
+			# will exit
+			DIALOG_CHOICE="1"
+		fi
+	fi
 fi
 
-# if token undefined,
-if [ "${HEATZY_TOKEN}" = "" ]
-then
-	# login failed
-	zenity --error --title="Heatzy pilote" --text="Login failed to Heatzy server\nCheck your login and password"
-
-	# exit
-	exit 1
-
-# else, token is ok
-else
-	# temporary file
-	TMP_FILE=$(mktemp --tmpdir "heatzy-XXXXXXXX")
-
+# if everything is ok, loop to display dialog box
+while [ "${DIALOG_CHOICE}" != "1" ]
+do
 	# set default dialog box params
 	ARR_PARAM=( "--title" "Heatzy pilote management" "--text" "Set the state of your Heatzy pilote devices" )
 	ARR_PARAM=( "${ARR_PARAM[@]}" "--window-icon" "/usr/share/icons/heatzy-pilote.png" "--image" "heatzy-pilote" )
-	ARR_PARAM=( "${ARR_PARAM[@]}" "--form" ) 
+	ARR_PARAM=( "${ARR_PARAM[@]}" "--button=gtk-close:1" "--button=gtk-find:2" "--button=gtk-save:0" "--form" ) 
 
 	# get list of heatzy pilote devices
 	sed -e '1,/\[devices\]/d' "${CONFIG_FILE}" > "${TMP_FILE}"
@@ -113,30 +127,38 @@ else
 	done < "${TMP_FILE}"
 
 	# display dialog box
-	RESULT=$(yad --center --width 400 --separator='#' --item-separator='#' "${ARR_PARAM[@]}")
+	YAD_RESULT=$(yad --center --width 400 --separator='#' --item-separator='#' "${ARR_PARAM[@]}")
 
-	# if selection validated
-	if [ "${RESULT}" != "" ]
-	then
-		# explode result into array
-		#IFS='|' read -r -a ARR_NEW <<< "${RESULT}"
-		ARR_NEW=( $(echo "${RESULT}" | tr '#' '\n') )
+	# get button selected
+	DIALOG_CHOICE=$?
+	case "${DIALOG_CHOICE}" in
+		# update device list
+		"2")
+			# update device list
+			heatzy --update --silent
+            		;;
+		# update devices state
+		"0")
+ 			# explode result into array
+			ARR_NEW=( $(echo "${YAD_RESULT}" | tr '#' '\n') )
 
-		# loop thru devices
-		for ((i=0; i < ${#ARR_DID[@]}; i++))
-		do
-			# if device has changed state,
-			if [ "${ARR_NEW[$i]}" != "${ARR_ORG[$i]}" ]
-			then
-				# send command
-				RESULT=$(heatzy --did "${ARR_DID[$i]}" --set "${ARR_NEW[$i]}")
+			# loop thru devices
+			for ((i=0; i < ${#ARR_DID[@]}; i++))
+			do
+				# if device has changed state,
+				if [ "${ARR_NEW[$i]}" != "${ARR_ORG[$i]}" ]
+				then
+					# send command
+					RESULT=$(heatzy --did "${ARR_DID[$i]}" --set "${ARR_NEW[$i]}")
 
-				# send notification
-				zenity --notification --text "${ARR_ALIAS[$i]} set to ${RESULT}" "--window-icon=heatzy-pilote"
-			fi
-		done
-	fi
+					# send notification
+					zenity --notification --text "${ARR_ALIAS[$i]} set to ${RESULT}" "--window-icon=heatzy-pilote"
+				fi
+			done
+			;;
+		*) ;;
+	esac
+done
 
-	# clenup temporary file
-	rm "${TMP_FILE}"
-fi
+# clenup temporary file
+rm "${TMP_FILE}"
