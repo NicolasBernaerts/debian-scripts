@@ -10,12 +10,12 @@ sudo wget -O /usr/share/icons/heatzy-pilote.png https://raw.githubusercontent.co
 wget -O $HOME/.config/heatzy.conf https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy.conf
 
 # install heatzy script
-sudo wget -O /usr/local/sbin/heatzy https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy
-sudo chmod +x /usr/local/sbin/heatzy
+sudo wget -O /usr/local/bin/heatzy https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy
+sudo chmod +x /usr/local/bin/heatzy
 
 # install heatzy-gui script
-sudo wget -O /usr/local/sbin/heatzy-gui https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy-gui
-sudo chmod +x /usr/local/sbin/heatzy-gui
+sudo wget -O /usr/local/bin/heatzy-gui https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy-gui
+sudo chmod +x /usr/local/bin/heatzy-gui
 
 # desktop integration
 sudo wget -O /usr/share/applications/heatzy.desktop https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy.desktop
