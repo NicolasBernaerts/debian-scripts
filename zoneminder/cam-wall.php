@@ -21,6 +21,7 @@
 //   17/11/2017 - V2.2 - Remove network topology difference (internet or lan)
 //   15/05/2018 - V2.3 - Add alert status
 //   18/11/2018 - V2.4 - Add cams parameter to specify camera list to be displayed
+//   22/01/2019 - V2.5 - Remove disabled cams from the wall
 // -------------------------------------------------------
 
 // zoneminder configuration
@@ -117,8 +118,12 @@ if (empty($arrDisplay))
 	$count = 0;
 	foreach ($arrOrdered as $idxMonitor => $idxDisplay) 
 	{
-		// populate cams array according to start index and wall size
-		if (($idxDisplay >= $wallIndex) && ($count < $maxCam))
+		# check if monitor is enabled
+		$monitor = $arrMonitor["monitors"][$idxMonitor];
+		$enabled = $monitor["Monitor"]["Enabled"];
+
+		// populate cams array according to camera status, start index and wall size
+		if (($enabled == "1") && ($idxDisplay >= $wallIndex) && ($count < $maxCam))
 		{
 			// add monitor to display list
 			$arrDisplay[] = $idxMonitor;
