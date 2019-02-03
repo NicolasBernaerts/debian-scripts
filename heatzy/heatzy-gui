@@ -107,16 +107,12 @@ then
 		# setup control to display
 		if [ "${STATE}" = "offline" ]
 		then
-			# control is read only
+			# set control as read only and state as off line
 			CONTROL="RO"
-
-			# device state
 			SELECTION="Off line"
 		else
-			# control is a combo box
+			# set control as a combo box and state label with default selected
 			CONTROL="CB"
-
-			# device state label with default selected
 			SELECTION=$(cat "${TMP_STATE}" | tr '\n' '#' | sed "s|${STATE}|^${STATE}|" | sed -e "s|[^#\^]*;||g" -e "s|#$||")
 		fi
 
