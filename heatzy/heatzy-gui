@@ -5,7 +5,7 @@
 # Revision history :
 #   27/11/2018, V1.0 - Creation by Nicolas Bernaerts
 #   30/11/2018, V1.1 - Update and infinite loop
-#   02/02/2019, V1.2 - Rewrite due to heatzy modifications
+#   02/02/2019, V1.2 - Rewrite due to heatzy script modifications
 # ---------------------------------------------------
 
 # ------------
@@ -15,6 +15,11 @@
 # check tools availability
 command -v yad >/dev/null 2>&1 || { zenity --error --text="Please install yad"; exit 1; }
 command -v heatzy >/dev/null 2>&1 || { zenity --error --text="Please install heatzy script"; exit 1; }
+
+# temporary file
+TMP_DIR=$(mktemp --tmpdir -d "heatzy-gui-XXXXXXXX")
+TMP_STATE="${TMP_DIR}/state.list"
+TMP_ORIGINAL="${TMP_DIR}/original.list"
 
 # start progression dialog box
 (
@@ -28,19 +33,19 @@ CONTINUE="ok"
 # ----------------------
 
 # read list of states
-ARR_STATE=( $(heatzy --list-state) )
+heatzy --list-state > "${TMP_STATE}"
 
 # update devices list
-ARR_DEVICE=( $(heatzy --update-device) )
+ARR_DID=( $(heatzy --update-device) )
 
 # check for login error
-ERROR=$(echo "${ARR_DEVICE[@]}" | grep "\[error\]")
+ERROR=$(echo "${ARR_DID[@]}" | grep "\[error\]")
 
 # if error, ask for login and password
 if [ "${ERROR}" != "" ]
 then
 	# ask for login and password
-	ANSWER=$(yad --center --width 400 --separator='#' --window-icon "/usr/share/icons/heatzy-pilote.png" --image "heatzy-pilote" \
+	ANSWER=$(yad --center --width 400 --separator='#' --window-icon "/usr/share/icons/smart-heater.png" --image "heatzy" \
 		--title "Heatzy pilote initialisation" --text "You first need to enter your Heatzy account login and password" \
 		--form --field="Login" "" --field="Password:H" "" )
 
@@ -55,10 +60,10 @@ then
 		if [ "${HEATZY_LOGIN}" != "" -a "${HEATZY_PASSW}" != "" ]
 		then
 			# update devices list
-			ARR_DEVICE=( $(heatzy --update-device --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSW}") )
+			ARR_DID=( $(heatzy --update-device --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSW}") )
 
 			# check for login error
-			ERROR=$(echo "${ARR_DEVICE[@]}" | grep "[error] username or password")
+			ERROR=$(echo "${ARR_DID[@]}" | grep "\[error\]")
 		fi
 
 		# if token still ndefined,
@@ -79,38 +84,46 @@ fi
 # if everything is ok, loop to display dialog box
 if [ "${CONTINUE}" = "ok" ]
 then
-	# initialise current array of current states
-	ARR_CURRENT=( )
-
 	# set default dialog box params
 	ARR_PARAM=( "--title" "Heatzy pilote management" "--text" "\nSet the state of your Heatzy pilote devices\n" )
-	ARR_PARAM=( "${ARR_PARAM[@]}" "--window-icon" "/usr/share/icons/heatzy-pilote.png" "--image" "heatzy-pilote" )
+	ARR_PARAM=( "${ARR_PARAM[@]}" "--window-icon" "/usr/share/icons/smart-heater.png" "--image" "heatzy" )
 	ARR_PARAM=( "${ARR_PARAM[@]}" "--button=gtk-cancel:1" "--button=gtk-ok:0" "--form" )
 
 	# loop thru devices
-	for DEVICE_DID in "${ARR_DEVICE[@]}"           
+	INDEX=0
+	for DID in "${ARR_DID[@]}"           
 	do
-		# read device alias
-		DEVICE_ALIAS=$(heatzy --get-alias "${DEVICE_DID}")
-
 		# read device state
-		DEVICE_STATE=$(heatzy --get-state "${DEVICE_DID}")
-		ARR_CURRENT=( "${ARR_CURRENT[@]}" "${DEVICE_STATE}" )
+		STATE=$(heatzy --get-state "${DID}")
+		LABEL=$(grep "^${STATE};" "${TMP_STATE}" | cut -d';' -f2)
+
+		# read device alias
+		ALIAS=$(heatzy --get-alias "${DID}")
 
 		# setup control to display
-		if [ "${DEVICE_STATE}" = "offline" ]
+		if [ "${STATE}" = "offline" ]
 		then
-			# device state and control
-			STATE="${DEVICE_STATE}"
+			# control is read only
 			CONTROL="RO"
+
+			# device state
+			SELECTION="Off line"
 		else
-			# device state and control
-			STATE=$(echo "${ARR_STATE[@]}" | tr ' ' '#' | sed "s/${DEVICE_STATE}/^${DEVICE_STATE}/")
+			# control is a combo box
 			CONTROL="CB"
+
+			# device state label with default selected
+			SELECTION=$(cat "${TMP_STATE}" | tr '\n' '#' | sed "s|${STATE}|^${STATE}|" | sed -e "s|[^#\^]*;||g" -e "s|#$||")
 		fi
 
 		# add dialog box parameters for device
-		ARR_PARAM=( "${ARR_PARAM[@]}" "--field=${DEVICE_ALIAS} :${CONTROL}" "${STATE}" )
+		ARR_PARAM=( "${ARR_PARAM[@]}" "--field=${ALIAS} :${CONTROL}" "${SELECTION}" )
+
+		# save current state
+		echo "${INDEX};${DID};${ALIAS};${LABEL}" >> "${TMP_ORIGINAL}"
+
+		# increment counter
+		INDEX=$((INDEX+1))
 	done
 
 	# close progress dialog
@@ -124,20 +137,28 @@ then
 	if [ "${DIALOG_CHOICE}" = "0" ]
 	then
 		# explode result into array
-		ARR_NEW=( $(echo "${YAD_RESULT}" | tr '#' ' ') )
+		IFS=$'\n'; ARR_CHOICE=( $(echo "${YAD_RESULT}" | tr '#' '\n') )
 
 		# loop thru devices
-		for ((i=0; i < ${#ARR_DEVICE[@]}; i++))
+		for ((INDEX=0; INDEX < ${#ARR_CHOICE[@]}; INDEX++))
 		do
+			# get previous state
+			DEVICE=$(grep "^${INDEX};" "${TMP_ORIGINAL}")
+			DID=$(echo "${DEVICE}" | cut -d';' -f2)
+			ALIAS=$(echo "${DEVICE}" | cut -d';' -f3)
+			LABEL=$(echo "${DEVICE}" | cut -d';' -f4)
+ 
 			# if device has changed state,
-			if [ "${ARR_NEW[$i]}" != "${ARR_CURRENT[$i]}" ]
+			if [ "${LABEL}" != "${ARR_CHOICE[${INDEX}]}" ]
 			then
+				# convert label to state
+				STATE=$(grep ";${LABEL}$" "${TMP_STATE}" | cut -d';' -f1)
+
 				# send command
-				heatzy --set-state "${ARR_DEVICE[$i]}" "${ARR_NEW[$i]}"
+				heatzy --set-state "${DID}" "${STATE}"
 
 				# send notification
-				ALIAS=$(heatzy --get-alias "${ARR_DEVICE[$i]}")
-				zenity --notification --text "${ALIAS} set to ${ARR_NEW[$i]}" "--window-icon=heatzy-pilote"
+				zenity --notification --text "${ALIAS} set to ${ARR_CHOICE[${INDEX}]}" "--window-icon=heatzy-pilote"
 			fi
 		done
 	fi
@@ -145,4 +166,7 @@ fi
 
 # close progress dialog
 echo 100
-) | yad --progress --width 380 --center --window-icon "/usr/share/icons/heatzy-pilote.png" --image "heatzy-pilote" --no-buttons --undecorated --pulsate --auto-close
+) | yad --progress --width 380 --center --window-icon "/usr/share/icons/smart-heater.png" --image "heatzy" --no-buttons --undecorated --pulsate --auto-close
+
+# cleanup
+rm -r "${TMP_DIR}"
