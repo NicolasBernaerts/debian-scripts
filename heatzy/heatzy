@@ -21,13 +21,13 @@
 CONFIG_FILE="$HOME/.config/heatzy.conf"
 
 # device states according to device type
-ARR_STATE=( "off" "comfort" "eco" "anti-freeze" )
+ARR_STATE=( "off;Stopped" "comfort;Comfort" "eco;Economic" "freeze;Frost free" )
 
-ARR_GET_HEATZY=( "off;u505cu6b62" "comfort;u8212u9002" "eco;u7ecfu6d4e" "anti-freeze;u89e3u51bb" )
-ARR_SET_HEATZY=( "off;[1,1,3]" "comfort;[1,1,0]" "eco;[1,1,1]" "anti-freeze;[1,1,2]" )
+ARR_GET_HEATZY=( "off;u505cu6b62" "comfort;u8212u9002" "eco;u7ecfu6d4e" "freeze;u89e3u51bb" )
+ARR_SET_HEATZY=( "off;[1,1,3]" "comfort;[1,1,0]" "eco;[1,1,1]" "freeze;[1,1,2]" )
 
-ARR_GET_PILOTE2=( "off;stop" "comfort;cft" "eco;eco" "anti-freeze;fro" )
-ARR_SET_PILOTE2=( "off;stop" "comfort;cft" "eco;eco" "anti-freeze;fro" )
+ARR_GET_PILOTE2=( "off;stop" "comfort;cft" "eco;eco" "freeze;fro" )
+ARR_SET_PILOTE2=( "off;stop" "comfort;cft" "eco;eco" "freeze;fro" )
 
 # ---------------
 #   Parameters
@@ -202,7 +202,10 @@ case "${ACTION}" in
 	# list available states
 	"list-state")
 		# list one state per line
-		echo "${ARR_STATE[@]}" | tr " " "\n"
+		for STATE in "${ARR_STATE[@]}"
+		do
+			echo "${STATE}"
+		done
 		;;
 
 	# list devices
