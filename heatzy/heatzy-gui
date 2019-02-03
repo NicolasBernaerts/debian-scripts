@@ -67,8 +67,8 @@ then
 			# login failed
 			zenity --error --title="Heatzy pilote" --text="Login failed to Heatzy server\nCheck your login and password"
 
-			# will exit
-			DIALOG_CHOICE="1"
+			# exit
+			CONTINUE="ko"
 		fi
 	else
 		# exit
