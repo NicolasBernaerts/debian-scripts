@@ -21,21 +21,14 @@ TMP_DIR=$(mktemp --tmpdir -d "heatzy-gui-XXXXXXXX")
 TMP_STATE="${TMP_DIR}/state.list"
 TMP_ORIGINAL="${TMP_DIR}/original.list"
 
-# start progression dialog box
-(
-echo "#Retreiving Heatzy devices condition"
-
 # display loop flag
 CONTINUE="ok"
 
-# ----------------------
-#   Update device list
-# ----------------------
-
-# read list of states
-heatzy --list-state > "${TMP_STATE}"
+# start progression dialog box
+(
 
 # update devices list
+echo "#Retreiving devices list"
 ARR_DID=( $(heatzy --update-device) )
 
 # check for login error
@@ -46,7 +39,7 @@ if [ "${ERROR}" != "" ]
 then
 	# ask for login and password
 	ANSWER=$(yad --center --width 400 --separator='#' --window-icon "/usr/share/icons/smart-heater.png" --image "heatzy" \
-		--title "Heatzy pilote initialisation" --text "You first need to enter your Heatzy account login and password" \
+		--title "Heatzy pilote initialisation" --text "\nPlease enter your Heatzy account credentials" \
 		--form --field="Login" "" --field="Password:H" "" )
 
 	# if cancel, exit
@@ -60,17 +53,19 @@ then
 		if [ "${HEATZY_LOGIN}" != "" -a "${HEATZY_PASSW}" != "" ]
 		then
 			# update devices list
+			echo "#Validating credentials"
 			ARR_DID=( $(heatzy --update-device --login "${HEATZY_LOGIN}" --password "${HEATZY_PASSW}") )
 
 			# check for login error
 			ERROR=$(echo "${ARR_DID[@]}" | grep "\[error\]")
 		fi
 
-		# if token still ndefined,
+		# if credentials have failed,
 		if [ "${ERROR}" != "" ]
 		then
 			# login failed
-			zenity --error --title="Heatzy pilote" --text="Login failed to Heatzy server\nCheck your login and password"
+			zenity --error --width 400 --window-icon "/usr/share/icons/smart-heater.png" \
+				--title="Authentification failure" --text="Login and password have been refused by Heatzy server.\n\nPlease check your credentials and try again"
 
 			# exit
 			CONTINUE="ko"
@@ -84,16 +79,25 @@ fi
 # if everything is ok, loop to display dialog box
 if [ "${CONTINUE}" = "ok" ]
 then
+	# read list of states
+	heatzy --list-state > "${TMP_STATE}"
+
 	# set default dialog box params
-	ARR_PARAM=( "--title" "Heatzy pilote management" "--text" "\nSet the state of your Heatzy pilote devices\n" )
+	ARR_PARAM=( "--title" "Heatzy pilote management" "--text" "\nPlease, select operating mode\n" )
 	ARR_PARAM=( "${ARR_PARAM[@]}" "--window-icon" "/usr/share/icons/smart-heater.png" "--image" "heatzy" )
 	ARR_PARAM=( "${ARR_PARAM[@]}" "--button=gtk-cancel:1" "--button=gtk-ok:0" "--form" )
 
 	# loop thru devices
 	INDEX=0
+	TOTAL=${#ARR_DID[@]}
 	for DID in "${ARR_DID[@]}"           
 	do
+		# increment counter
+		POSITION=${INDEX}
+		INDEX=$((INDEX+1))
+
 		# read device state
+		echo "#Reading device ${INDEX} / ${TOTAL}"
 		STATE=$(heatzy --get-state "${DID}")
 		LABEL=$(grep "^${STATE};" "${TMP_STATE}" | cut -d';' -f2)
 
@@ -117,13 +121,10 @@ then
 		fi
 
 		# add dialog box parameters for device
-		ARR_PARAM=( "${ARR_PARAM[@]}" "--field=${ALIAS} :${CONTROL}" "${SELECTION}" )
+		ARR_PARAM=( "${ARR_PARAM[@]}" "--field=${ALIAS}     :${CONTROL}" "${SELECTION}" )
 
 		# save current state
-		echo "${INDEX};${DID};${ALIAS};${LABEL}" >> "${TMP_ORIGINAL}"
-
-		# increment counter
-		INDEX=$((INDEX+1))
+		echo "${POSITION};${DID};${ALIAS};${LABEL}" >> "${TMP_ORIGINAL}"
 	done
 
 	# close progress dialog
@@ -166,6 +167,7 @@ fi
 
 # close progress dialog
 echo 100
+
 ) | yad --progress --width 380 --center --window-icon "/usr/share/icons/smart-heater.png" --image "heatzy" --no-buttons --undecorated --pulsate --auto-close
 
 # cleanup
