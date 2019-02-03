@@ -4,7 +4,8 @@
 mkdir --parents $HOME/.config
 
 # install icon
-sudo wget -O /usr/share/icons/heatzy-pilote.png https://raw.githubusercontent.com/NicolasBernaerts/icon/master/heatzy-pilote.png
+sudo wget -O /usr/share/icons/heatzy.png https://raw.githubusercontent.com/NicolasBernaerts/icon/master/heatzy.png
+sudo wget -O /usr/share/icons/smart-heater.png https://raw.githubusercontent.com/NicolasBernaerts/icon/master/smart-heater.png
 
 # retrieve configuration file
 wget -O $HOME/.config/heatzy.conf https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy.conf
