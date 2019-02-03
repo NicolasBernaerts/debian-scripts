@@ -147,18 +147,18 @@ then
 			DID=$(echo "${DEVICE}" | cut -d';' -f2)
 			ALIAS=$(echo "${DEVICE}" | cut -d';' -f3)
 			LABEL=$(echo "${DEVICE}" | cut -d';' -f4)
- 
+
 			# if device has changed state,
 			if [ "${LABEL}" != "${ARR_CHOICE[${INDEX}]}" ]
 			then
 				# convert label to state
-				STATE=$(grep ";${LABEL}$" "${TMP_STATE}" | cut -d';' -f1)
+				STATE=$(grep ";${ARR_CHOICE[${INDEX}]}$" "${TMP_STATE}" | cut -d';' -f1)
 
 				# send command
 				heatzy --set-state "${DID}" "${STATE}"
 
 				# send notification
-				zenity --notification --text "${ALIAS} set to ${ARR_CHOICE[${INDEX}]}" "--window-icon=heatzy-pilote"
+				zenity --notification --text "${ALIAS} set to ${ARR_CHOICE[${INDEX}]}" "--window-icon=heatzy"
 			fi
 		done
 	fi
