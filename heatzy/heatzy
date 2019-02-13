@@ -1,6 +1,6 @@
 #!/bin/bash
 # ---------------------------------------------------
-# Scipt to handle Heatzy pilote devices
+# Script to handle Heatzy pilote devices
 #
 # Revision history :
 #   16/04/2018, V1.0 - Creation by Nicolas Bernaerts
@@ -14,7 +14,7 @@
 # ---------------------------------------------------
 
 # -----------------------
-#   Global configration
+#   Global configuration
 # -----------------------
 
 # configuration file (login and password)
