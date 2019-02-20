@@ -10,12 +10,12 @@
 #   User configuration
 # -----------------------
 
+# Heatzy state refresh cycle (in seconds)
+HEATZY_REFRESH=300
+
 # Heatzy account
 HEATZY_LOGIN="your-heatzy-login"
 HEATZY_PASSWORD="your-heatzy-password"
-
-# Heatzy state refresh cycle (in seconds)
-HEATZY_REFRESH=300
 
 # MQTT account
 MQTT_HOST="your-mqtt-host"
