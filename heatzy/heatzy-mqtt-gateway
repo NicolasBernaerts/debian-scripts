@@ -140,7 +140,7 @@ pkill -f "mosquitto_sub --host ${MQTT_HOST}"
 mosquitto_sub "${ARR_MQTT_OPTION[@]}" "--verbose" "--topic" "${MQTT_TOPIC}/+/command" >> "${TMP_FIFO}" &
 
 # send a first update command
-echo "update" > "${TMP_FIFO}" &
+echo "update" >> "${TMP_FIFO}" &
 
 # ---------------------
 #  loop to empty fifo
@@ -209,6 +209,7 @@ do
 
 		# publish mqtt devices list separated by ';'
 		MESSAGE=$(echo ${ARR_DID[@]} | tr ' ' ';')
+		[ "${MESSAGE}" = "" ] && MESSAGE="none"
 		mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/list" "--message" "${MESSAGE}"
 
 	# else, deal with command
