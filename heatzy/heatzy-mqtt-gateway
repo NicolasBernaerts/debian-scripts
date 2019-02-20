@@ -30,24 +30,31 @@ ARR_MQTT_OPTION=( )
 #  Help and Controls
 # --------------------
 
-if [ "$1" != "--start" ]
+# if no argument, display help
+if [ $# -eq 0 ] 
 then
 	echo "Gateway to expose Heatzy and Pilote2 devices thru a MQTT server"
+	echo "Parameters are :"
+	echo "  --start    Start the gateway"
+	echo "  --stop     Stop the gateway"
 	echo "MQTT topics are :"
 	echo "  list of devices      = ${MQTT_TOPIC}/list"
 	echo "  get state of device  = ${MQTT_TOPIC}/<DID>/state"
 	echo "  set state of device  = ${MQTT_TOPIC}/<DID>/command"
-	echo "MQTT states are numeric values :"
-	echo "  0 = offline"
-	echo "  1 = off"
-	echo "  2 = comfort"
-	echo "  3 = eco"
-	echo "  4 = frost"
-	echo "Script runs as a service in an infinite loop."
-	echo "Only parameter is :"
-	echo "  --start    Start the gateway"
+	echo "MQTT states and command are numeric values :"
+	echo "  0=offline 1=off 2=comfort 3=eco 4=frost"
 	exit 1
 fi
+
+# loop to retrieve arguments
+while test $# -gt 0
+do
+	case "$1" in
+	"--start")  ACTION="start"; shift; ;;
+	"--stop")   ACTION="stop"; shift; ;;
+	*) echo "[warning] Parameter $1 ignored"; shift; ;;
+	esac
+done
 
 # controls
 [ "${HEATZY_LOGIN}" = "" -o "${HEATZY_PASSWORD}" = "" ] && { echo "[error] Heatzy username or password not defined"; exit 1; }
@@ -82,9 +89,10 @@ ARR_MQTT_OPTION=( "${ARR_MQTT_OPTION[@]}" "--host" "${MQTT_HOST}" )
 
 # temporary files
 TMP_DIR="/tmp/heatzy-mqtt-gateway"
+TMP_RUN="${TMP_DIR}/gateway.run"
+TMP_FIFO="${TMP_DIR}/fifo.csv"
 TMP_JSON="${TMP_DIR}/data.json"
 TMP_DATA="${TMP_DIR}/data.csv"
-TMP_FIFO="${TMP_DIR}/fifo.csv"
 
 # create environment
 [ ! -d "${TMP_DIR}" ] && mkdir --parents "${TMP_DIR}"
@@ -130,128 +138,157 @@ heatzy_command ()
 }
 
 # -----------------
+#  Service stop
+# -----------------
+
+if [ "${ACTION}" = "stop" ]
+then
+	# remove running flag
+	rm -f "${TMP_RUN}"
+
+	# kill any previous subscriber
+	pkill -f "mosquitto_sub --host ${MQTT_HOST}"
+
+	# kill all gateway process
+	killall "heatzy-mqtt-gateway"
+
+# -----------------
 #  Service start
 # -----------------
 
-# kill any previous subscriber
-pkill -f "mosquitto_sub --host ${MQTT_HOST}"
+# service already running
+elif [ "${ACTION}" = "start" -a -f "${TMP_RUN}" ]
+then
+	# error message
+	echo "[error] Gateway service already running"
 
-# start subscriber to listen to set state commands and send result to the fifo
-mosquitto_sub "${ARR_MQTT_OPTION[@]}" "--verbose" "--topic" "${MQTT_TOPIC}/+/command" >> "${TMP_FIFO}" &
+# start the gateway
+elif [ "${ACTION}" = "start" ]
+then
+	# declare running flag
+	echo "running" > "${TMP_RUN}"
 
-# send a first update command
-echo "update" >> "${TMP_FIFO}" &
+	# start subscriber to listen to set state commands and send result to the fifo
+	mosquitto_sub "${ARR_MQTT_OPTION[@]}" "--verbose" "--topic" "${MQTT_TOPIC}/+/command" >> "${TMP_FIFO}" &
 
-# ---------------------
-#  loop to empty fifo
-# ---------------------
+	# send a first update command
+	echo "update" >> "${TMP_FIFO}" &
 
-while read LINE < "${TMP_FIFO}"
-do
-	# display line
-	echo "[process] ${LINE}"
+	# ---------------------
+	#  loop to empty fifo
+	# ---------------------
 
-	# if update from server
-	if [ "${LINE}" = "update" ]
-	then
-		# initialisation
-		ARR_DID=( )
+	while read LINE < "${TMP_FIFO}"
+	do
+		# display line
+		echo "[process] ${LINE}"
 
-		# plan next update
-		{ sleep "${HEATZY_REFRESH}"; echo "update" >> "${TMP_FIFO}"; } &
-
-		# send list of devices command
-		ARR_PARAM=( "-X" "GET" "--header" "Accept:application/json" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
-		heatzy_command "${ARR_PARAM[@]}" "https://euapi.gizwits.com/app/bindings"
-
-		# extract list of devices from JSON (one line per device)
-		cat "${TMP_JSON}" | tr '{' '\n' | grep "dev_alias" > "${TMP_DATA}"
-
-		# loop thru list of devices
-		while read DEVICE
-		do
+		# if update from server
+		if [ "${LINE}" = "update" ]
+		then
 			# initialisation
-			STATE="0"
+			ARR_DID=( )
 
-			# extract device DID
-			DID=$(echo "${DEVICE}" | sed "s/^.*[{,\" ]did[\": ]*\([^\",}]*\).*$/\1/")
-			ARR_DID=( "${ARR_DID[@]}" "${DID}" )
+			# plan next update
+			{ sleep "${HEATZY_REFRESH}"; echo "update" >> "${TMP_FIFO}"; } &
+
+			# send list of devices command
+			ARR_PARAM=( "-X" "GET" "--header" "Accept:application/json" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
+			heatzy_command "${ARR_PARAM[@]}" "https://euapi.gizwits.com/app/bindings"
+
+			# extract list of devices from JSON (one line per device)
+			cat "${TMP_JSON}" | tr '{' '\n' | grep "dev_alias" > "${TMP_DATA}"
+
+			# loop thru list of devices
+			while read DEVICE
+			do
+				# initialisation
+				STATE="0"
+
+				# extract device DID
+				DID=$(echo "${DEVICE}" | sed "s/^.*[{,\" ]did[\": ]*\([^\",}]*\).*$/\1/")
+				ARR_DID=( "${ARR_DID[@]}" "${DID}" )
+
+				# send online state command
+				ARR_PARAM=( "-X" "GET" "--header" "Accept: application/json" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
+				heatzy_command "${ARR_PARAM[@]}" "https://euapi.gizwits.com/app/devices/${DID}"
+
+				# if device is online
+				IS_ONLINE=$(cat "${TMP_JSON}" | sed "s/^.*[{,\" ]is_online[\": ]*\([^\",}]*\).*$/\1/")
+				if [ "${IS_ONLINE}" = "true" ]
+				then
+					# get product type
+					PRODUCT=$(cat "${TMP_JSON}" | sed "s/^.*[{,\" ]product_name[\": ]*\([^\",}]*\).*$/\1/")
+
+					# send status command
+					ARR_PARAM=( "-X" "GET" "--header" "Accept: application/json" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
+					heatzy_command "${ARR_PARAM[@]}" "https://euapi.gizwits.com/app/devdata/${DID}/latest"
+
+					# extract state string
+					RESULT=$(cat "${TMP_JSON}" | sed "s|^.*[{,\" ]mode[\": ]*\([^\",}]*\).*$|\1|")
+
+					# heatzy pilot gen1
+					[ "${PRODUCT}" = "Heatzy" ] && STATE=$(echo "${ARR_GET_HEATZY[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
+					[ "${PRODUCT}" = "Pilote2" ] && STATE=$(echo "${ARR_GET_PILOTE2[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
+
+					# publish mqtt state
+					mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/state" "--message" "${STATE}"
+
+					# display
+					echo "${DID} [${PRODUCT} - ${STATE}]"
+				fi
+			done < "${TMP_DATA}"
+
+			# publish mqtt devices list separated by ';'
+			MESSAGE=$(echo ${ARR_DID[@]} | tr ' ' ';')
+			[ "${MESSAGE}" = "" ] && MESSAGE="none"
+			mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/list" "--message" "${MESSAGE}"
+
+		# else, deal with command
+		else
+			# extract DID and state
+			DID=$(echo "${LINE}" | sed "s|^.*\/\([^\/]*\)\/command.*$|\1|")
+			STATE=$(echo "${LINE}" | sed "s|^.*command[^0-9]*\([0-9]\)$|\1|")
 
 			# send online state command
 			ARR_PARAM=( "-X" "GET" "--header" "Accept: application/json" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
 			heatzy_command "${ARR_PARAM[@]}" "https://euapi.gizwits.com/app/devices/${DID}"
 
-			# if device is online
+			# check if device is online
 			IS_ONLINE=$(cat "${TMP_JSON}" | sed "s/^.*[{,\" ]is_online[\": ]*\([^\",}]*\).*$/\1/")
-			if [ "${IS_ONLINE}" = "true" ]
+
+			# device offline
+			if [ "${IS_ONLINE}" != "true" ]
 			then
+				# state is offline
+				STATE=0
+
+			# device online
+			else
 				# get product type
 				PRODUCT=$(cat "${TMP_JSON}" | sed "s/^.*[{,\" ]product_name[\": ]*\([^\",}]*\).*$/\1/")
 
-				# send status command
-				ARR_PARAM=( "-X" "GET" "--header" "Accept: application/json" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
-				heatzy_command "${ARR_PARAM[@]}" "https://euapi.gizwits.com/app/devdata/${DID}/latest"
+				# command for Heatzy product (gen 1)
+				if [ "${PRODUCT}" = "Heatzy" ]
+				then
+					STRING=$(echo "${ARR_SET_HEATZY[@]}" | tr " " "\n" | grep "^${STATE};" | cut -d';' -f2)
+					ARR_COMMAND=( "-d" "{\"raw\":${STRING}}" )
 
-				# extract state string
-				RESULT=$(cat "${TMP_JSON}" | sed "s|^.*[{,\" ]mode[\": ]*\([^\",}]*\).*$|\1|")
-
-				# heatzy pilot gen1
-				[ "${PRODUCT}" = "Heatzy" ] && STATE=$(echo "${ARR_GET_HEATZY[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
-				[ "${PRODUCT}" = "Pilote2" ] && STATE=$(echo "${ARR_GET_PILOTE2[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
-
-				# publish mqtt state
-				mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/state" "--message" "${STATE}"
-
-				# display
-				echo "${DID} [${PRODUCT} - ${STATE}]"
-			fi
-		done < "${TMP_DATA}"
-
-		# publish mqtt devices list separated by ';'
-		MESSAGE=$(echo ${ARR_DID[@]} | tr ' ' ';')
-		[ "${MESSAGE}" = "" ] && MESSAGE="none"
-		mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/list" "--message" "${MESSAGE}"
-
-	# else, deal with command
-	else
-		# extract DID and state
-		DID=$(echo "${LINE}" | sed "s|^.*\/\([^\/]*\)\/command.*$|\1|")
-		STATE=$(echo "${LINE}" | sed "s|^.*command[^0-9]*\([0-9]\)$|\1|")
-
-		# send online state command
-		ARR_PARAM=( "-X" "GET" "--header" "Accept: application/json" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
-		heatzy_command "${ARR_PARAM[@]}" "https://euapi.gizwits.com/app/devices/${DID}"
-
-		# if device is online
-		IS_ONLINE=$(cat "${TMP_JSON}" | sed "s/^.*[{,\" ]is_online[\": ]*\([^\",}]*\).*$/\1/")
-		if [ "${IS_ONLINE}" = "true" ]
-		then
-			# get product type
-			PRODUCT=$(cat "${TMP_JSON}" | sed "s/^.*[{,\" ]product_name[\": ]*\([^\",}]*\).*$/\1/")
-
-			# command for Heatzy product (gen 1)
-			if [ "${PRODUCT}" = "Heatzy" ]
-			then
-				STRING=$(echo "${ARR_SET_HEATZY[@]}" | tr " " "\n" | grep "^${STATE};" | cut -d';' -f2)
-				ARR_COMMAND=( "-d" "{\"raw\":${STRING}}" )
-
-			# command for Pilote2 product (gen 2)
-			elif [ "${PRODUCT}" = "Pilote2" ]
-			then
-				STRING=$(echo "${ARR_SET_PILOTE2[@]}" | tr " " "\n" | grep "^${STATE};" | cut -d';' -f2)
-				ARR_COMMAND=( "-d" "{\"attrs\":{\"mode\":\"${STRING}\"}}" )
-			fi
+				# command for Pilote2 product (gen 2)
+				elif [ "${PRODUCT}" = "Pilote2" ]
+				then
+					STRING=$(echo "${ARR_SET_PILOTE2[@]}" | tr " " "\n" | grep "^${STATE};" | cut -d';' -f2)
+					ARR_COMMAND=( "-d" "{\"attrs\":{\"mode\":\"${STRING}\"}}" )
+				fi
 				
-			# send update command
-			ARR_PARAM=( "-X" "POST" "--header" "Accept: application/json" "--header" "Content-Type: application/json" )
-			ARR_PARAM=( "${ARR_PARAM[@]}" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
-			heatzy_command "${ARR_PARAM[@]}" "${ARR_COMMAND[@]}" "https://euapi.gizwits.com/app/control/${DID}"
-		else
-			# state is offline
-			STATE=0
-		fi
+				# send update command
+				ARR_PARAM=( "-X" "POST" "--header" "Accept: application/json" "--header" "Content-Type: application/json" )
+				ARR_PARAM=( "${ARR_PARAM[@]}" "--header" "X-Gizwits-Application-Id: ${HEATZY_APPID}" )
+				heatzy_command "${ARR_PARAM[@]}" "${ARR_COMMAND[@]}" "https://euapi.gizwits.com/app/control/${DID}"
+			fi
 
-		# publish mqtt state
-		mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/state" "--message" "${STATE}"
-	fi
-done
+			# publish mqtt state
+			mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/state" "--message" "${STATE}"
+		fi
+	done
+fi
