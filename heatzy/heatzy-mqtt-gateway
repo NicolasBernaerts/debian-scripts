@@ -40,9 +40,10 @@ then
 	echo "  --stop     Stop the gateway"
 	echo "MQTT topics are :"
 	echo "  list of devices      = ${MQTT_TOPIC}/list"
-	echo "  get state of device  = ${MQTT_TOPIC}/<DID>/state"
 	echo "  set state of device  = ${MQTT_TOPIC}/<DID>/command"
-	echo "MQTT states and command are numeric values :"
+	echo "  get state of device  = ${MQTT_TOPIC}/<DID>/state"
+	echo "  get name of device  = ${MQTT_TOPIC}/<DID>/name"
+	echo "MQTT states are numeric values :"
 	echo "  0=offline 1=off 2=comfort 3=eco 4=frost"
 	exit 1
 fi
@@ -206,8 +207,11 @@ then
 				# initialisation
 				STATE="0"
 
-				# extract device DID
+				# extract device DID and alias
 				DID=$(echo "${DEVICE}" | sed "s/^.*[{,\" ]did[\": ]*\([^\",}]*\).*$/\1/")
+				ALIAS=$(echo "${DEVICE}" | sed "s/^.*[{,\" ]dev_alias[\": ]*\([^\",}]*\).*$/\1/")
+
+				# add to devices array
 				ARR_DID=( "${ARR_DID[@]}" "${DID}" )
 
 				# send online state command
@@ -231,13 +235,14 @@ then
 					# heatzy pilot gen1
 					[ "${PRODUCT}" = "Heatzy" ] && STATE=$(echo "${ARR_GET_HEATZY[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
 					[ "${PRODUCT}" = "Pilote2" ] && STATE=$(echo "${ARR_GET_PILOTE2[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
-
-					# publish mqtt state
-					mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/state" "--message" "${STATE}"
-
-					# display
-					echo "${DID} [${PRODUCT} - ${STATE}]"
 				fi
+				
+				# publish mqtt name and state
+				mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/state" "--message" "${STATE}"
+				mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/name" "--message" "${ALIAS}"
+
+				# display
+				echo "${DID} [${PRODUCT} - ${STATE}]"
 			done < "${TMP_DATA}"
 
 			# publish mqtt devices list separated by ';'
