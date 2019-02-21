@@ -36,8 +36,9 @@ if [ $# -eq 0 ]
 then
 	echo "Gateway to expose Heatzy and Pilote2 devices thru a MQTT server"
 	echo "Parameters are :"
-	echo "  --start    Start the gateway"
-	echo "  --stop     Stop the gateway"
+	echo "  --start     Start the gateway"
+	echo "  --stop      Stop the gateway"
+	echo "  --verbose   Display state updates"
 	echo "MQTT topics are :"
 	echo "  list of devices     = ${MQTT_TOPIC}/list"
 	echo "  set state of device = ${MQTT_TOPIC}/<DID>/command"
@@ -52,8 +53,9 @@ fi
 while test $# -gt 0
 do
 	case "$1" in
-	"--start")  ACTION="start"; shift; ;;
-	"--stop")   ACTION="stop"; shift; ;;
+	"--start")   ACTION="start"; shift; ;;
+	"--stop")    ACTION="stop"; shift; ;;
+	"--verbose") VERBOSE="ok"; shift; ;;
 	*) echo "[warning] Parameter $1 ignored"; shift; ;;
 	esac
 done
@@ -183,7 +185,7 @@ then
 	while read LINE < "${TMP_FIFO}"
 	do
 		# display line
-		echo "[process] ${LINE}"
+		[ "${VERBOSE}" = "ok" ] && echo "[process] ${LINE}"
 
 		# if update from server
 		if [ "${LINE}" = "update" ]
@@ -242,7 +244,7 @@ then
 				mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/name" "--message" "${ALIAS}"
 
 				# display
-				echo "${DID} [${PRODUCT} - ${STATE}]"
+				[ "${VERBOSE}" = "ok" ] && echo "${DID} [${PRODUCT} - ${STATE}]"
 			done < "${TMP_DATA}"
 
 			# publish mqtt devices list separated by ';'
