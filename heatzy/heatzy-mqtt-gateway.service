@@ -1,0 +1,15 @@
+[Unit]
+Description=MQTT gateway for Heatzy pilot devices
+After=network-online.target
+ 
+[Service]
+Type=simple
+UMask=447
+ExecStart=/usr/local/sbin/heatzy-mqtt-gateway --start
+ExecStop=/usr/local/sbin/heatzy-mqtt-gateway --stop
+Restart=on-failure
+PIDFile=/var/run/heatzy-mqtt-gateway.pid
+TimeoutStopSec=30
+ 
+[Install]
+WantedBy=multi-user.target
