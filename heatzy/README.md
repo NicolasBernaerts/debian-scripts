@@ -7,7 +7,7 @@ These scripts are used to control Heatzy pilote devices.
 
 **Command line and simple GUI**
 
-<i>heatzy</i> and <i>heatzy-gui</i> allow you to manage your heatzy pilot devices thru Bash command line or thru a very simple GUI.
+<i>heatzy</i> and <i>heatzy-gui</i> allow you to manage your heatzy pilote devices thru Bash command line or thru a very simple GUI.
 
 Installation script is **heatzy-install.sh**
 
@@ -19,7 +19,7 @@ A complete description is available at http://bernaerts.dyndns.org/linux/359-lin
 
 <i>heatzy-mqtt-gateway</i> is simple script that acts as a gateway service between Heatzy servers and a simple MQTT broker.
 
-Your Heatzy pilot devices are then managed like some simple MQTT controlled IOT.
+Your Heatzy pilote devices can then be managed like simple MQTT controlled IOTs.
 
 This opens lots of possibilities with most domotic solutions (OpenHab, Domoticz, ...).
 
