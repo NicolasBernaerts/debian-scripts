@@ -240,6 +240,9 @@ then
 					# heatzy pilot gen1
 					[ "${PRODUCT}" = "Heatzy" ] && STATE=$(echo "${ARR_GET_HEATZY[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
 					[ "${PRODUCT}" = "Pilote2" ] && STATE=$(echo "${ARR_GET_PILOTE2[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
+
+					# if state is null, declare offline
+					[ "${STATE}" = "(null)" ] && STATE="0"
 				fi
 
 				# publish mqtt name and state
