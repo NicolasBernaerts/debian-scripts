@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# install mosquitto clients (subscriber and publisher)
+apt install mosquitto-clients
+
 # install gateway service
 wget -O /usr/local/sbin/heatzy-mqtt-gateway https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy-mqtt-gateway
 chmod +x /usr/local/sbin/heatzy-mqtt-gateway
