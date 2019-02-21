@@ -3,6 +3,7 @@ Heatzy Pilote
 
 These scripts are used to control Heatzy pilote devices.
 
+
 **Command line and simple GUI**
 
 <i>heatzy</i> and <i>heatzy-gui</i> allow you to manage your heatzy pilot devices thru Bash command line or thru a very simple GUI.
@@ -10,6 +11,7 @@ These scripts are used to control Heatzy pilote devices.
 Installation script is **heatzy-install.sh**
 
 A complete description is available at http://bernaerts.dyndns.org/linux/359-linux-manage-heatzy-pilote-devices
+
 
 **Heatzy <-> MQTT gateway**
 
