@@ -23,6 +23,6 @@ Your Heatzy pilote devices can then be managed like simple MQTT controlled IOTs.
 
 This opens lots of possibilities with most domotic solutions (OpenHab, Domoticz, ...).
 
-Installation script is **heatzy-gateway-install.sh**
+Installation script is **heatzy-mqtt-gateway-install.sh**
 
 A complete description is available at http://bernaerts.dyndns.org/linux/xxx-to-come
