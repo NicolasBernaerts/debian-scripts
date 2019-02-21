@@ -4,7 +4,7 @@
 #
 # Revision history :
 #   10/02/2019, V1.0 - Creation by Nicolas Bernaerts
-#   This script is still under construction !
+#   20/02/2019, V1.1 - Add --verbose and name topic
 # ---------------------------------------------------
 
 # -----------------------
@@ -12,7 +12,7 @@
 # -----------------------
 
 # Heatzy state refresh cycle (in seconds)
-HEATZY_REFRESH=300
+HEATZY_REFRESH=180
 
 # Heatzy account
 HEATZY_LOGIN="your-heatzy-login"
@@ -36,15 +36,15 @@ if [ $# -eq 0 ]
 then
 	echo "Gateway to expose Heatzy and Pilote2 devices thru a MQTT server"
 	echo "Parameters are :"
-	echo "  --start     Start the gateway"
-	echo "  --stop      Stop the gateway"
+	echo "  --start      Start the gateway"
+	echo "  --stop       Stop the gateway"
 	echo "  --verbose   Display state updates"
 	echo "MQTT topics are :"
 	echo "  list of devices     = ${MQTT_TOPIC}/list"
 	echo "  set state of device = ${MQTT_TOPIC}/<DID>/command"
 	echo "  get state of device = ${MQTT_TOPIC}/<DID>/state"
 	echo "  get name of device  = ${MQTT_TOPIC}/<DID>/name"
-	echo "MQTT states are numeric values :"
+	echo "MQTT states and command are numeric values :"
 	echo "  0=offline 1=off 2=comfort 3=eco 4=frost"
 	exit 1
 fi
@@ -93,10 +93,12 @@ ARR_MQTT_OPTION=( "${ARR_MQTT_OPTION[@]}" "--host" "${MQTT_HOST}" )
 
 # temporary files
 TMP_DIR="/tmp/heatzy-mqtt-gateway"
-TMP_RUN="${TMP_DIR}/gateway.run"
 TMP_FIFO="${TMP_DIR}/fifo.csv"
 TMP_JSON="${TMP_DIR}/data.json"
 TMP_DATA="${TMP_DIR}/data.csv"
+
+# PID file
+RUN_PID="/var/run/heatzy-mqtt-gateway.pid"
 
 # create environment
 [ ! -d "${TMP_DIR}" ] && mkdir --parents "${TMP_DIR}"
@@ -147,30 +149,31 @@ heatzy_command ()
 
 if [ "${ACTION}" = "stop" ]
 then
-	# remove running flag
-	rm -f "${TMP_RUN}"
+	# kill any previous gateway process
+	pkill -f "heatzy-mqtt-gateway --start"
 
 	# kill any previous subscriber
 	pkill -f "mosquitto_sub --host ${MQTT_HOST}"
 
-	# kill all gateway process
-	killall "heatzy-mqtt-gateway"
+	# remove running flag
+	rm -f "${RUN_PID}"
+fi
 
 # -----------------
 #  Service start
 # -----------------
 
 # service already running
-elif [ "${ACTION}" = "start" -a -f "${TMP_RUN}" ]
+if [ "${ACTION}" = "start" -a -f "${RUN_PID}" ]
 then
 	# error message
 	echo "[error] Gateway service already running"
 
-# start the gateway
+# else, start the gateway
 elif [ "${ACTION}" = "start" ]
 then
 	# declare running flag
-	echo "running" > "${TMP_RUN}"
+	echo "${BASHPID}" > "${RUN_PID}"
 
 	# start subscriber to listen to set state commands and send result to the fifo
 	mosquitto_sub "${ARR_MQTT_OPTION[@]}" "--verbose" "--topic" "${MQTT_TOPIC}/+/command" >> "${TMP_FIFO}" &
@@ -185,7 +188,7 @@ then
 	while read LINE < "${TMP_FIFO}"
 	do
 		# display line
-		[ "${VERBOSE}" = "ok" ] && echo "[process] ${LINE}"
+		echo "[process] ${LINE}"
 
 		# if update from server
 		if [ "${LINE}" = "update" ]
@@ -238,7 +241,7 @@ then
 					[ "${PRODUCT}" = "Heatzy" ] && STATE=$(echo "${ARR_GET_HEATZY[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
 					[ "${PRODUCT}" = "Pilote2" ] && STATE=$(echo "${ARR_GET_PILOTE2[@]}" | tr ' ' '\n' | grep ";${RESULT}$" | cut -d';' -f1)
 				fi
-				
+
 				# publish mqtt name and state
 				mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/state" "--message" "${STATE}"
 				mosquitto_pub "${ARR_MQTT_OPTION[@]}" "--topic" "${MQTT_TOPIC}/${DID}/name" "--message" "${ALIAS}"
