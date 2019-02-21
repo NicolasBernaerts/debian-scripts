@@ -94,7 +94,7 @@ done
 if [ -f "${FILE_CONF}" ]
 then
 	# display used config file unless --silent parameter is used
-	[[ ${DISPLAY_SILENT} = "false" ]] && echo "[Info] Using configuration file ${FILE_CONF}"
+	[ "${DISPLAY_SILENT}" = "false" ] && echo "[Info] Using configuration file ${FILE_CONF}"
 
 	# if needed, load from configuration file
 	[ "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
@@ -104,7 +104,7 @@ then
 	SOCKS_PROXY=$(cat "${FILE_CONF}" | grep "socks-proxy=" | cut -d'=' -f2)
 else
 	# display warning unless --silent parameter is used
-	[[ ${DISPLAY_SILENT} = "false" ]] && echo "[Warning] Configuration file missing ${FILE_CONF}"
+	[ "${DISPLAY_SILENT}" = "false" ] && echo "[Warning] Configuration file missing ${FILE_CONF}"
 fi
 
 # check API key and User ID
