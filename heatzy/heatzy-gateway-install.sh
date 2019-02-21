@@ -5,7 +5,4 @@ wget -O /usr/local/sbin/heatzy-mqtt-gateway https://raw.githubusercontent.com/Ni
 chmod +x /usr/local/sbin/heatzy-mqtt-gateway
 
 # declare service
-wget -O /etc/systemd/system https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy-mqtt-gateway.service
-
-# enable the gateway service
-systemctl enable heatzy-mqtt-gateway.service
+wget -O /etc/systemd/system/heatzy-mqtt-gateway.service https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/heatzy/heatzy-mqtt-gateway.service
