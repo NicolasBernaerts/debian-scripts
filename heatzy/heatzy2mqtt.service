@@ -5,10 +5,10 @@ After=network-online.target
 [Service]
 Type=simple
 UMask=447
-ExecStart=/usr/local/sbin/heatzy-mqtt-gateway --start
-ExecStop=/usr/local/sbin/heatzy-mqtt-gateway --stop
+ExecStart=/usr/local/sbin/heatzy2mqtt --start
+ExecStop=/usr/local/sbin/heatzy2mqtt --stop
 Restart=on-failure
-PIDFile=/var/run/heatzy-mqtt-gateway.pid
+PIDFile=/var/run/heatzy2mqtt.pid
 TimeoutStopSec=30
  
 [Install]
