@@ -17,12 +17,12 @@ A complete description is available at http://bernaerts.dyndns.org/linux/359-lin
 
 **Heatzy <-> MQTT gateway**
 
-<i>heatzy-mqtt-gateway</i> is simple script that acts as a gateway service between Heatzy servers and a simple MQTT broker.
+<i>heatzy2mqtt</i> is simple script that acts as a gateway service between Heatzy servers and a simple MQTT broker.
 
 Your Heatzy pilote devices can then be managed like simple MQTT controlled IOTs.
 
 This opens lots of possibilities with most domotic solutions (OpenHab, Domoticz, ...).
 
-Installation script is **heatzy-mqtt-gateway-install.sh**
+Installation script is **heatzy2mqtt-install.sh**
 
 A complete description is available at http://bernaerts.dyndns.org/linux/xxx-to-come
