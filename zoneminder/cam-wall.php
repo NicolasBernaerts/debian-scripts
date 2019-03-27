@@ -3,11 +3,11 @@
 // Webcam image wall display, based on ZoneMinder config
 //
 // Display parameters :
-//   row    - Number of camera rows on the wall
-//   column - Number of camera per row on the wall
-//   width  - Width of the wall in pixels (default = 1980px)
-//   height - Height of the wall in pixels (default = 1080px)
-//   zoom   - Height of a zoomed image in pixels (default = 720px)
+//   row    - Number of camera rows on the wall (default=6)
+//   column - Number of camera per row on the wall (default=7)
+//   width  - Width of the wall in pixels (default=1980px)
+//   height - Height of the wall in pixels (default=1080px)
+//   zoom   - Height of a zoomed image in pixels (default=720px)
 //
 // Camera selection :
 //   index  - Index of first cam to display in ZM sequence list
