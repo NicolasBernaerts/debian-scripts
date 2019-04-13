@@ -11,7 +11,7 @@ These scripts are used to control Heatzy pilote devices.
 
 Installation script is **heatzy-install.sh**
 
-A complete description is available at http://bernaerts.dyndns.org/linux/359-linux-manage-heatzy-pilote-devices
+A complete description is available at http://www.bernaerts-nicolas.fr/linux/359-linux-manage-heatzy-pilote-devices
 
 -----
 
@@ -25,4 +25,4 @@ This opens lots of possibilities with most domotic solutions (OpenHab, Domoticz,
 
 Installation script is **heatzy2mqtt-install.sh**
 
-A complete description is available at http://bernaerts.dyndns.org/linux/xxx-to-come
+A complete description is available at http://www.bernaerts-nicolas.fr/iot/362-linux-setup-heatzy-pilote-mqtt-gateway
