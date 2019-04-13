@@ -23,7 +23,6 @@ $authKey = $zmSecret . $zmUser . $zmPass . $arrTime[2] . $arrTime[3] . $arrTime[
 $authHash = md5 ($authKey);
 
 // generate zoneminder URL
-//$imgURL = $zmURL . "/cgi-bin/zms?mode=single&monitor=" . $monitorId . "&scale=" . $monitorScale . "&auth=" . $authHash;
 $imgURL = $zmURL . "/cgi-bin/zms?mode=single&monitor=" . $monitorId . "&scale=" . $monitorScale . "&user=" . $zmUser . "&pass=" . $zmPass;
 
 // set jpeg header
