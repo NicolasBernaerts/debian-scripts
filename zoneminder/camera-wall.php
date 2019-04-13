@@ -162,8 +162,8 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	$arrCam[$idxDisplay]['height'] = $camHeight;
 	$arrCam[$idxDisplay]['twidth']  = floor ($camWidth * $scaleFactor);
 	$arrCam[$idxDisplay]['theight'] = floor ($camHeight * $scaleFactor);
-	$arrCam[$idxDisplay]['urlthumb']  = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
-	$arrCam[$idxDisplay]['urlzoom']   = "/cam-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
+	$arrCam[$idxDisplay]['urlthumb']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
+	$arrCam[$idxDisplay]['urlzoom']   = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
 
 	// prepare cookie array
 	$arrCamCookie['cam'][$count] = $monitor["Monitor"]["Id"];
@@ -220,7 +220,7 @@ function updateImage(camIndex)
 
 		// get next cam alarm status
 		statusReq = new XMLHttpRequest();
-		statusReq.open("GET", "cam-status.php?index=" + camIndex, true);
+		statusReq.open("GET", "camera-status.php?index=" + camIndex, true);
 		statusReq.onreadystatechange = function ()
 		{
 			spanId="span" + camIndex;
