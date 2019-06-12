@@ -3,6 +3,8 @@
 #  Send notification to a telegram account thru a bot account
 #  Configuration is stored in /etc/telegram-notify.conf
 #  Depends on curl
+
+#  You might need to set your LANG variable like 'LANG=en_US.UTF-8'
 #
 #  Revision history :
 #    10/01/2016, V1.0 - Creation by N. Bernaerts
@@ -15,6 +17,7 @@
 #    19/05/2018, V1.6 - Add socks5 proxy option, idea from RangerRU
 #    28/06/2018, V1.7 - Add --warning and --config options, idea from Markus Hof
 #    20/02/2019, V1.8 - Add --nagios (ICON_EMOJI_FOLLOWS_NAGIOS_STATE), idea from Jorgen van der Meulen
+#    12/06/2019, V1.9 - Add --verbose option, moved default behavior of comments on config file usage from '--silent' to '--verbose' option.
 # ---------------------------------------------------
 
 # initialise variables
@@ -52,27 +55,28 @@ then
   echo "  --title <title>     Title of the message (if text message)"
   echo "  --html              Use HTML mode for text content (markdown by default)"
   echo "  --silent            Send message in silent mode (no user notification on the client)"
+  echo "  --verbose           Be verbose on config file usage or warning if config file is missing"
   echo "  --config <file>     use alternate config file, instead of default ${FILE_CONF}"
   echo "  --user <user-id>    Recipient User or Channel ID (replaces user-id= in ${FILE_CONF})"
   echo "  --key <api-key>     API Key of your Telegram bot (replaces api-key= in ${FILE_CONF})"
   echo "  --nagios <state>    State can be either Nagios Core/Nagios XI/Naemon/OP5 \$SERVICESTATE$ or \$HOSTSTATE$"
-  echo "		      Nagios should use notification command definitions like this to automatically set an icon that matches the Nagios state:"
-  echo "			"
-  echo "		      define command {"
-  echo "		      command_name    notify-host-by-telegram"
-  echo '		      /usr/local/bin/telegram-notify --silent --key <Your api key> --user $CONTACTPAGER$ --title "$HOSTNAME$ $NOTIFICATIONTYPE$" \'
+  echo "                      Nagios should use notification command definitions like this to automatically set an icon that matches the Nagios state:"
+  echo "                        "
+  echo "                      define command {"
+  echo "                      command_name    notify-host-by-telegram"
+  echo '                      /usr/local/bin/telegram-notify --key <Your api key> --user $CONTACTPAGER$ --title "$HOSTNAME$ $NOTIFICATIONTYPE$" \'
   echo '                      --text "Host state is *$HOSTSTATE$*\nAddress is $HOSTADDRESS$, Description is *$HOSTALIAS$*\nOutput is *$HOSTOUTPUT$*" --nagios "$HOSTSTATE$"'
-  echo "		      }"
-  echo "		      "
-  echo "		      and "
-  echo "		      "
-  echo "		      define command {"
-  echo "		      command_name    notify-service-by-telegram"
-  echo '		      /usr/local/bin/telegram-notify --silent --key  <Your api key> --user $CONTACTPAGER$ --title "$HOSTNAME$ $NOTIFICATIONTYPE$" \'
+  echo "                      }"
+  echo "                      "
+  echo "                      and "
+  echo "                      "
+  echo "                      define command {"
+  echo "                      command_name    notify-service-by-telegram"
+  echo '                      /usr/local/bin/telegram-notify --key  <Your api key> --user $CONTACTPAGER$ --title "$HOSTNAME$ $NOTIFICATIONTYPE$" \'
   echo '                      --text "Service state is *$SERVICESTATE$* on host *$HOSTNAME$* \[$HOSTADDRESS$]\nService description is *$SERVICEDESC$*\nOutput is *$SERVICEOUTPUT$*" \'
   echo '                      --nagios "$SERVICESTATE$"'
-  echo "		      }"
-  echo "			"
+  echo "                      }"
+  echo "                        "
   echo "Optional icons are :"
   echo "  --success           Add a success icon"
   echo "  --warning           Add a warning icon"
@@ -94,6 +98,7 @@ do
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
     "--html") DISPLAY_MODE="html"; shift; ;;
     "--silent") DISPLAY_SILENT="true"; shift; ;;
+    "--verbose") DISPLAY_VERBOSE="true"; shift; ;;
     "--config") shift; FILE_CONF="$1"; shift; ;;
     "--user") shift; USER_ID="$1"; shift; ;;
     "--key") shift; API_KEY="$1"; shift; ;;
@@ -136,8 +141,8 @@ fi
 # if configuration file is present
 if [ -f "${FILE_CONF}" ]
 then
-        # display used config file unless --silent parameter is used
-        [[ ${DISPLAY_SILENT} = "false" ]] && echo "[Info] Using configuration file ${FILE_CONF}"
+        # display used config file if --verbose parameter is used
+        [[ ${DISPLAY_VERBOSE} = "true" ]] && echo "[Info] Using configuration file ${FILE_CONF}"
 
         # if needed, load from configuration file
         [ "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
@@ -146,8 +151,8 @@ then
         # load socks proxy from configuration file
         SOCKS_PROXY=$(cat "${FILE_CONF}" | grep "socks-proxy=" | cut -d'=' -f2)
 else
-        # display warning unless --silent parameter is used
-        [[ ${DISPLAY_SILENT} = "false" ]] && echo "[Warning] Configuration file missing ${FILE_CONF}"
+        # display warning if --verbose parameter is used
+        [[ ${DISPLAY_VERBOSE} = "true" ]] && echo "[Warning] Configuration file missing ${FILE_CONF}"
 fi
 
 # check API key and User ID
@@ -195,8 +200,8 @@ fi
 #   Notification
 # -------------------------------------------------------
 
-# default option
-ARR_OPTIONS=( "--silent" "--insecure" )
+# default options for curl
+ARR_OPTIONS=( "--insecure" "--silent" ) # for curl only
 
 # if needed, socks5 option
 [ "${SOCKS_PROXY}" != "" ] && ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--socks5-hostname" "${SOCKS_PROXY}" )
