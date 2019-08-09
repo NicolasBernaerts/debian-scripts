@@ -14,6 +14,7 @@
 #    11/01/2018, V1.5 - Add possibility of piped text, idea from Yasir Atabani
 #    19/05/2018, V1.6 - Add socks5 proxy option, idea from RangerRU
 #    28/06/2018, V1.7 - Add --warning and --config options, idea from Markus Hof
+#    08/08/2019, V1.8 - Add --file option (file holding text to display)
 # ---------------------------------------------------
 
 # initialise variables
@@ -43,7 +44,8 @@ then
   echo "Tool to send a message to a Telegram User or Channel."
   echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
   echo "Main parameters are :"
-  echo "  --text <text>       Text of the message or file with the text (use - for piped text)"
+  echo "  --text <text>       Text of the message (use - for piped text)"
+  echo "  --file <file>       File holding the text of the message"
   echo "  --photo <file>      Image to display"
   echo "  --document <file>   Document to transfer"
   echo "Options are :"
@@ -69,6 +71,7 @@ while test $# -gt 0
 do
   case "$1" in
     "--text") shift; DISPLAY_TEXT="$1"; shift; ;;
+    "--file") shift; TEXTFILE="$1"; shift; ;;
     "--photo") shift; PICTURE="$1"; shift; ;;
     "--document") shift; DOCUMENT="$1"; shift; ;;
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
@@ -115,6 +118,9 @@ fi
 #   Check for file existence
 # -------------------------------------------------------
 
+# if text file, check for text file
+[ "${TEXTFILE}" != "" -a ! -f "${TEXTFILE}" ] && { echo "[error] Text file ${TEXTFILE} doesn't exist"; exit 1; }
+
 # if picture, check for image file
 [ "${PICTURE}" != "" -a ! -f "${PICTURE}" ] && { echo "[error] Image file ${PICTURE} doesn't exist"; exit 1; }
 
@@ -125,11 +131,11 @@ fi
 #   String preparation : space and line break
 # -------------------------------------------------------
 
+# if text is a file, get its content
+[ -f "${TEXTFILE}" ] && DISPLAY_TEXT=$(cat "${TEXTFILE}")
+
 # if text is to be read from pipe, get it
 [ ! -t 0 -a "${DISPLAY_TEXT}" = "-" ] && DISPLAY_TEXT=$(cat)
-
-# if text is a file, get its content
-[ -f "${DISPLAY_TEXT}" ] && DISPLAY_TEXT=$(cat "${DISPLAY_TEXT}")
 
 # convert \n to LF
 DISPLAY_TEXT=$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')
