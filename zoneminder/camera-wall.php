@@ -70,12 +70,12 @@ $percentColumn  = floor (100 / $nbrColumn);
 
 // login to zoneminder
 $ch = curl_init();
-curl_setopt ($ch,CURLOPT_RETURNTRANSFER,1);
+curl_setopt ($ch,CURLOPT_RETURNTRANSFER, 1);
 curl_setopt ($ch,CURLOPT_URL,$zmURL . "/index.php");
 curl_setopt ($ch,CURLOPT_HEADER, 1);
 curl_setopt ($ch,CURLOPT_POST, 4);
 curl_setopt ($ch,CURLOPT_POSTFIELDS, "username=" . $zmUser . "&password=" . $zmPass . "&action=login&view=console");
-$response = curl_exec($ch);
+$response = curl_exec ($ch);
 curl_close ($ch);
 
 // retrieve session cookie
@@ -91,7 +91,7 @@ $json = curl_exec ($ch);
 curl_close ($ch);
 
 // convert json to array
-$arrMonitor = json_decode($json, true);
+$arrMonitor = json_decode ($json, true);
 
 // if monitors list is provided, generate array of cams to be displayed
 if (isset($lstCam))
@@ -114,7 +114,7 @@ if (empty($arrDisplay))
 {
 	// sort monitor array in sequence order
 	foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor) $arrOrdered[$idxMonitor] = $monitor["Monitor"]["Sequence"];
-	asort($arrOrdered);
+	asort ($arrOrdered);
 	
 	// loop thru ordered monitors to add monitorr to the array of cams to be displayed
 	$count = 0;
@@ -147,9 +147,9 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	$monitor = $arrMonitor["monitors"][$idxMonitor];
 
 	// calculate scale factor
-	$camWidth = $monitor["Monitor"]["Width"];
-	$camHeight = $monitor["Monitor"]["Height"];
-	$scaleWidth = $maxThumbWidth / $camWidth;
+	$camWidth    = $monitor["Monitor"]["Width"];
+	$camHeight   = $monitor["Monitor"]["Height"];
+	$scaleWidth  = $maxThumbWidth / $camWidth;
 	$scaleHeight = $maxThumbHeight / $camHeight;
 	$scaleFactor = min ($scaleWidth, $scaleHeight);
 
