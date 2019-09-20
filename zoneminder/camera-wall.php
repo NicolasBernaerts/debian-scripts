@@ -32,6 +32,8 @@ $arrCam       = Array ();
 $arrDisplay   = Array ();
 $arrZMCookie  = Array ();
 $arrCamCookie = Array ();
+$arrMonitor   = Array ();
+$arrOrdered   = Array ();
 
 // Parameter : Number of camera lines
 $nbrRow = 6;
@@ -64,29 +66,29 @@ if (isset($_GET["cams"])) $lstCam = $_GET["cams"];
 $maxCam = $nbrColumn * $nbrRow;
 $maxThumbWidth  = ceil ($wallWidth / $nbrColumn);
 $maxThumbHeight = ceil ($wallHeight / $nbrRow);
-$percentColumn = floor (100 / $nbrColumn);
+$percentColumn  = floor (100 / $nbrColumn);
 
 // login to zoneminder
-$ch=curl_init();
-curl_setopt($ch,CURLOPT_RETURNTRANSFER,1);
-curl_setopt($ch,CURLOPT_URL,$zmURL . "/index.php");
-curl_setopt($ch,CURLOPT_HEADER, 1);
-curl_setopt($ch,CURLOPT_POST, 4);
-curl_setopt($ch,CURLOPT_POSTFIELDS, "username=" . $zmUser . "&password=" . $zmPass . "&action=login&view=console");
-$response=curl_exec($ch);
-curl_close($ch);
+$ch = curl_init();
+curl_setopt ($ch,CURLOPT_RETURNTRANSFER,1);
+curl_setopt ($ch,CURLOPT_URL,$zmURL . "/index.php");
+curl_setopt ($ch,CURLOPT_HEADER, 1);
+curl_setopt ($ch,CURLOPT_POST, 4);
+curl_setopt ($ch,CURLOPT_POSTFIELDS, "username=" . $zmUser . "&password=" . $zmPass . "&action=login&view=console");
+$response = curl_exec($ch);
+curl_close ($ch);
 
 // retrieve session cookie
-preg_match_all('/^Set-Cookie:\s*([^;]*)/mi', $response, $arrZMCookie);
+preg_match_all ('/^Set-Cookie:\s*([^;]*)/mi', $response, $arrZMCookie);
 $arrCamCookie['session'] = $arrZMCookie[1][0];
 
 // get monitor list
-$ch=curl_init();
-curl_setopt($ch,CURLOPT_RETURNTRANSFER,1);
-curl_setopt($ch,CURLOPT_URL,$zmURL . "/api/monitors.json");
-curl_setopt($ch, CURLOPT_HTTPHEADER, array("Cookie: " . $arrCamCookie['session']));
-$json=curl_exec($ch);
-curl_close($ch);
+$ch = curl_init();
+curl_setopt ($ch, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt ($ch, CURLOPT_URL, $zmURL . "/api/monitors.json");
+curl_setopt ($ch, CURLOPT_HTTPHEADER, array("Cookie: " . $arrCamCookie['session']));
+$json = curl_exec ($ch);
+curl_close ($ch);
 
 // convert json to array
 $arrMonitor = json_decode($json, true);
