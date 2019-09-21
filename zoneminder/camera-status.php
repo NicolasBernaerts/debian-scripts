@@ -13,7 +13,7 @@
 require_once ("camera-config.inc");
 
 // Parameters
-$camIndex  = $_GET["index"];
+$camIndex = $_GET["index"];
 
 // recover cam array thru saved cookie
 $arrCamCookie = unserialize($_COOKIE['cams']);
@@ -25,15 +25,15 @@ $camID = $arrCamCookie['cam'][$camIndex];
 $sessionID = $arrCamCookie['session'];
 
 // get cam status thru zoneminder
-$ch=curl_init();
-curl_setopt($ch,CURLOPT_RETURNTRANSFER,1);
-curl_setopt($ch,CURLOPT_URL,$zmURL . "/api/monitors/alarm/id:" . $camID . "/command:status.json");
-curl_setopt($ch, CURLOPT_HTTPHEADER, array("Cookie: " . $sessionID));
-$json=curl_exec($ch);
-curl_close($ch);
+$ch = curl_init ();
+curl_setopt ($ch, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt ($ch, CURLOPT_URL, $zmURL . "/api/monitors/alarm/id:" . $camID . "/command:status.json");
+curl_setopt ($ch, CURLOPT_HTTPHEADER, array("Cookie: " . $sessionID));
+$json = curl_exec($ch);
+curl_close ($ch);
 
 // convert json to array
-$arrResult = json_decode($json, true);
+$arrResult = json_decode ($json, true);
 
 // display status
 switch ($arrResult["status"]) {
