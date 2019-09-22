@@ -24,6 +24,7 @@ DISPLAY_PICT=""
 DISPLAY_ICON=""
 DISPLAY_MODE="markdown"
 DISPLAY_SILENT="false"
+QUIET="false"
 
 # Configuration file
 FILE_CONF="/etc/telegram-notify.conf"
@@ -52,6 +53,7 @@ then
   echo "  --title <title>     Title of the message (if text message)"
   echo "  --html              Use HTML mode for text content (markdown by default)"
   echo "  --silent            Send message in silent mode (no user notification on the client)"
+  echo "  --quiet             Don't print message to stdout"
   echo "  --config <file>     use alternate config file, instead of default ${FILE_CONF}"
   echo "  --user <user-id>    Recipient User or Channel ID (replaces user-id= in ${FILE_CONF})"
   echo "  --key <api-key>     API Key of your Telegram bot (replaces api-key= in ${FILE_CONF})"
@@ -77,6 +79,7 @@ do
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
     "--html") DISPLAY_MODE="html"; shift; ;;
     "--silent") DISPLAY_SILENT="true"; shift; ;;
+    "--quiet") QUIET="true"; shift; ;;
     "--config") shift; FILE_CONF="$1"; shift; ;;
     "--user") shift; USER_ID="$1"; shift; ;;
     "--key") shift; API_KEY="$1"; shift; ;;
@@ -97,7 +100,7 @@ done
 if [ -f "${FILE_CONF}" ]
 then
 	# display used config file unless --silent parameter is used
-	[ "${DISPLAY_SILENT}" = "false" ] && echo "[Info] Using configuration file ${FILE_CONF}"
+	[ "${QUIET}" = "false" ] && echo "[Info] Using configuration file ${FILE_CONF}"
 
 	# if needed, load from configuration file
 	[ "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
@@ -107,7 +110,7 @@ then
 	SOCKS_PROXY=$(cat "${FILE_CONF}" | grep "socks-proxy=" | cut -d'=' -f2)
 else
 	# display warning unless --silent parameter is used
-	[ "${DISPLAY_SILENT}" = "false" ] && echo "[Warning] Configuration file missing ${FILE_CONF}"
+	[ "${QUIET}" = "false" ] && echo "[Warning] Configuration file missing ${FILE_CONF}"
 fi
 
 # check API key and User ID
