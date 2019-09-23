@@ -15,6 +15,7 @@
 #    19/05/2018, V1.6 - Add socks5 proxy option, idea from RangerRU
 #    28/06/2018, V1.7 - Add --warning and --config options, idea from Markus Hof
 #    08/08/2019, V1.8 - Add --file option (file holding text to display)
+#    23/09/2019, V1.9 - Add --quiet option, thanks to Alberto Panu
 # ---------------------------------------------------
 
 # initialise variables
@@ -99,7 +100,7 @@ done
 # if configuration file is present
 if [ -f "${FILE_CONF}" ]
 then
-	# display used config file unless --silent parameter is used
+	# display used config file unless --quiet parameter is used
 	[ "${QUIET}" = "false" ] && echo "[Info] Using configuration file ${FILE_CONF}"
 
 	# if needed, load from configuration file
@@ -109,7 +110,7 @@ then
 	# load socks proxy from configuration file
 	SOCKS_PROXY=$(cat "${FILE_CONF}" | grep "socks-proxy=" | cut -d'=' -f2)
 else
-	# display warning unless --silent parameter is used
+	# display warning unless --quiet parameter is used
 	[ "${QUIET}" = "false" ] && echo "[Warning] Configuration file missing ${FILE_CONF}"
 fi
 
@@ -187,8 +188,8 @@ then
 
 #  else, nothing, error
 else
-  # error message
-  echo "[Error] Nothing to notify"
+  # display error message unless --quiet parameter is used
+  [ "${QUIET}" = "false" ] && echo "[Error] Nothing to notify"
   exit 1
 fi
 
