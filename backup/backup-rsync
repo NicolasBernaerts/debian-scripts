@@ -3,187 +3,97 @@
 # Script to backup server databases
 #
 # This script uses the following tools :
-#  * mysqldump
 #  * rsync
 #
 # Parameters :
 #  $1 - rsync backup description file
+#  $2 - backup log
 #
 #  Revision history :
 #   08/06/2013, V1.0 - Creation by N. Bernaerts
 #   04/11/2013, V1.1 - Handle error cases & log
 #   08/11/2013, V1.2 - Change parameters
 #   15/10/2017, V1.3 - Merge configuration in single file
-#   05/01/2018, V2.0 - Merge database and directories
+#   05/10/2019, V1.4 - Change log management
 # --------------------------------------------------------
 
-# set PATH (in case)
-PATH="/usr/sbin:/usr/bin:/sbin:/bin"
-
-# ----------------------
-#   Tools availability
-# ----------------------
-
-command -v mysqldump >/dev/null 2>&1 || { echo "Please install mysqldump"; exit 1; }
-command -v rsync >/dev/null 2>&1 || { echo "Please install rsync"; exit 1; }
-
-# ---------------
-#   Parameters
-# ---------------
-
-# if no argument, display help
-if [ $# -eq 0 ] 
-then
-	echo "Tool to backup mysql database and directories on a remote server thru rsync"
-	echo "Configuration file is given as parameter and has following structure :"
-	echo "  [remote]"
-	echo "  name=xxxx"
-	echo "  server=192.168.x.x"
-	echo "  port=873"
-	echo "  module=server"
-	echo "  user=server"
-	echo "  password=p@ssword"
-	echo "  option=-rtv --del"
-	echo "  [database]"
-	echo "  db-password=your-db-password"
-	echo "  database=label1;database-name-1"
-	echo "  database=label2;database-name-2"
-	echo "  database=...;..."
-	echo "  [directory]"
-	echo "  directory=Database;##DATABASE##"
-	echo "  directory=label1;/path/of/directory/to/backup/1;*/excludemask/*"
-	echo "  directory=label2;/path/of/directory/to/backup/2"
-	echo "  directory=...;..."
-	exit 1
-fi
-
-# loop to retrieve arguments
-while test $# -gt 0
-do
-	case "$1" in
-	"--conf")         shift; BACKUP_DATA="$1"; shift; ;;
-	*)                echo "Parameter $1 ignored"; shift; ;;
-	esac
-done
-
-# check configuration file
-[ "${BACKUP_DATA}" = "" ] && { echo "[error] You must provide a configuration file with --conf"; exit 1; }
-[ ! -f "${BACKUP_DATA}" ] && { echo "[error] Configuration file ${BACKUP_DATA} is absent"; exit 1; }
-
-# ------------------
-#   Initialisation
-# ------------------
-
-# log header
-LOG_HEADER=$(date +"BCK%d%m")
-
-# log and display - end
-echo   "${LOG_HEADER} - ${BACKUP_NAME} : Start"
-logger "${LOG_HEADER} - ${BACKUP_NAME} : Start"
+# retreive parameters
+BACKUP_CONFIG="$1"
+BACKUP_LOG="$2"
 
 # temporary files
-TMP_DIR=$(mktemp -t -d backup-XXXXXXXX)
-TMP_PWD="${TMP_DIR}/backup.pwd"
+TMP_DIR=$(mktemp --tmpdir --directory backup-rsync-XXXXXX)
+TMP_PASSWD="${TMP_DIR}/backup.pwd"
 TMP_LOG="${TMP_DIR}/backup.log"
-TMP_LST="${TMP_DIR}/backup.lst"
-TMP_DB="${TMP_DIR}/database"
+TMP_LIST="${TMP_DIR}/backup.lst"
 
-# ----------------
-#  remote server
-# ----------------
+# check if another identical backup session is running
+NB_PROCESS=$(ps -C "backup-rsync" -o pid=,comm=,args= | grep "${BACKUP_CONFIG}" | wc -l)
 
-BACKUP_NAME=$(cat ${BACKUP_DATA}   | grep "name="     | cut -d'=' -f2-)
-BACKUP_SERVER=$(cat ${BACKUP_DATA} | grep "server="   | cut -d'=' -f2-)
-BACKUP_PORT=$(cat ${BACKUP_DATA}   | grep "port="     | cut -d'=' -f2-)
-BACKUP_MODULE=$(cat ${BACKUP_DATA} | grep "module="   | cut -d'=' -f2-)
-BACKUP_USER=$(cat ${BACKUP_DATA}   | grep "user="     | cut -d'=' -f2-)
-BACKUP_PASSWD=$(cat ${BACKUP_DATA} | grep "password=" | cut -d'=' -f2-)
-BACKUP_OPTION=$(cat ${BACKUP_DATA} | grep "option="   | cut -d'=' -f2-)
+# set backup parameters
+BACKUP_NAME="$(cat ${BACKUP_CONFIG}   | grep "name="     | cut -d'=' -f2-)"
+BACKUP_SERVER="$(cat ${BACKUP_CONFIG} | grep "server="   | cut -d'=' -f2-)"
+BACKUP_PORT="$(cat ${BACKUP_CONFIG}   | grep "port="     | cut -d'=' -f2-)"
+BACKUP_MODULE="$(cat ${BACKUP_CONFIG} | grep "module="   | cut -d'=' -f2-)"
+BACKUP_USER="$(cat ${BACKUP_CONFIG}   | grep "user="     | cut -d'=' -f2-)"
+BACKUP_PASSWD="$(cat ${BACKUP_CONFIG} | grep "password=" | cut -d'=' -f2-)"
+BACKUP_OPTION="$(cat ${BACKUP_CONFIG} | grep "option="   | cut -d'=' -f2-)"
 
-# default values
-[ "${BACKUP_NAME}" = "" ] && BACKUP_NAME="${BACKUP_SERVER}"
-[ "${BACKUP_PORT}" = "" ] && BACKUP_PORT="873"
+# log action
+echo "-- Rsync ${BACKUP_NAME} --" | tee -a "${BACKUP_LOG}"
 
-# -----------
-#  database 
-# -----------
+# if backup already running
+if [ ${NB_PROCESS} -gt 2 ]
+then
+	# log error
+	date +"error %H:%M Backup already running" | tee -a "${BACKUP_LOG}"
 
-# create backup directory
-mkdir "${TMP_DB}"
+# else, run the backup
+else
+	# generate backup directories list
+	grep "^dir=" "${BACKUP_CONFIG}" > "${TMP_LIST}"
 
-# get database parameters
-DB_PASSWD="$(cat ${BACKUP_DATA} | grep "db-password=" | cut -d'=' -f2-)"
+	# create password file
+	echo "${BACKUP_PASSWD}" > "${TMP_PASSWD}"
+	chmod 0700 "${TMP_PASSWD}"
 
-# loop thru database list
-grep "^database=" "${BACKUP_DATA}" > "${TMP_LST}"
-while read LINE
-do
+	# loop thru the backup list
+	while read LINE
+	do
+		# keep line content
+		CONTENT=$(echo "${LINE}" | cut -d'=' -f2-)
 
-	# keep line content
-	CONTENT=$(echo "${LINE}" | cut -d'=' -f2-)
+		# extract directory data
+		DIRECTORY_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
+		DIRECTORY_PATH=$(echo "${CONTENT}" | cut -d';' -f2)
+		DIRECTORY_EXCLUDE=$(echo "${CONTENT}" | cut -d';' -f3)
 
-	# extract database data
-	DATABASE_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
-	DATABASE_NAME=$(echo "${LINE}" | cut -d';' -f2)
+		# if backup dir exists, start the backup
+		if [ -d "$DIRECTORY_PATH" ]
+		then
+			# set options
+			ARR_OPTION=( $(echo ${BACKUP_OPTION}) )
+			[ "$DIRECTORY_EXCLUDE" != "" ] && ARR_OPTION=( "${ARR_OPTION[@]}" "--exclude=${DIRECTORY_EXCLUDE}" )
 
-	# database dump
-	mysqldump -u root "-p${DB_PASSWD}" "${DATABASE_NAME}" > "${TMP_DB}/${DATABASE_NAME}.sql"
+			# beginning of backup
+			date +"start   %H:%M ${BACKUP_NAME} ${DIRECTORY_PATH}"
 
-	# log and display - backup
-	echo   "${LOG_HEADER} - ${BACKUP_NAME} : Database ${DATABASE_LABEL}"
-	logger "${LOG_HEADER} - ${BACKUP_NAME} : Database ${DATABASE_LABEL}"
+			# backup the directory structure
+			rsync "${ARR_OPTION[@]}" "--password-file=${TMP_PASSWD}" "${DIRECTORY_PATH}" "rsync://${BACKUP_USER}@${BACKUP_SERVER}:${BACKUP_PORT}/${BACKUP_MODULE}" > "${TMP_LOG}"
 
-done < "${TMP_LST}"
+			# log success or error
+			NB_LINE=$(cat "${TMP_LOG}" | wc -l)
+			[ ${NB_LINE} -gt 0 ] && RESULT="success" || RESULT="error"
+			date +"${RESULT} %H:%M ${BACKUP_NAME} ${DIRECTORY_PATH}" | tee -a "${BACKUP_LOG}"
 
-# --------------
-#  directories
-# --------------
-
-# create password file
-echo "${BACKUP_PASSWD}" > "${TMP_PWD}"
-chmod 0700 "${TMP_PWD}"
-
-# loop thru backup directories list
-grep "^directory=" "${BACKUP_DATA}" >> "${TMP_LST}"
-while read LINE
-do
-	# keep line content
-	CONTENT=$(echo "${LINE}" | cut -d'=' -f2-)
-
-	# extract directory data
-	DIRECTORY_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
-	DIRECTORY_PATH=$(echo "${CONTENT}" | cut -d';' -f2 | sed "s|##DATABASE##|${TMP_DB}|")
-	DIRECTORY_EXCLUDE=$(echo "${CONTENT}" | cut -d';' -f3)
-
-	# if backup dir exists, start the backup
-	if [ -d "$DIRECTORY_PATH" ]
-	then
-		# set options
-		ARR_OPTION=( $(echo ${BACKUP_OPTION}) )
-		[ "$DIRECTORY_EXCLUDE" != "" ] && ARR_OPTION=( "${ARR_OPTION[@]}" "--exclude=${DIRECTORY_EXCLUDE}" )
-
-		# backup the directory structure
-		rsync "${ARR_OPTION[@]}" "--password-file=${TMP_PWD}" "${DIRECTORY_PATH}" "rsync://${BACKUP_USER}@${BACKUP_SERVER}:${BACKUP_PORT}/${BACKUP_MODULE}" > "${TMP_LOG}"
-
-		# log success or error
-		LOG_LINE=$(wc -l "${TMP_LOG}" | cut -d' ' -f1)
-		[ ${LOG_LINE} -gt 0 ] && RESULT="Success" || RESULT="Error"
-		echo   "${LOG_HEADER} - ${BACKUP_NAME} : [${RESULT}] ${DIRECTORY_LABEL} (${DIRECTORY_PATH})"
-		logger "${LOG_HEADER} - ${BACKUP_NAME} : [${RESULT}] ${DIRECTORY_LABEL} (${DIRECTORY_PATH})"
-
-	# else, directory not present
-	else
-		logger "${LOG_HEADER} - ${BACKUP_NAME} : [Absent] ${DIRECTORY_PATH}"
-	fi
-done < "${TMP_LST}"
-
-# -----------
-#  clean-up
-# -----------
+		# else, directory not present
+		else
+			# log error
+			date +"error %H:%M ${BACKUP_NAME} ${DIRECTORY_PATH} absent" | tee -a "${BACKUP_LOG}"
+		fi
+	done < "${TMP_LIST}"
+fi
 
 # remove temporary files
-rm -rf "${TMP_DIR}"
+rm -R "${TMP_DIR}"
 
-# log and display - end
-echo   "${LOG_HEADER} - ${BACKUP_NAME} : End"
-logger "${LOG_HEADER} - ${BACKUP_NAME} : End"

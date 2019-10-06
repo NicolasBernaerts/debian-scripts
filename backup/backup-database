@@ -1,0 +1,59 @@
+#!/bin/bash
+# --------------------------------------------------------
+# Script to backup server databases
+#
+# Parameters :
+#  $1 - rsync backup description file
+#  $2 - backup log
+#
+#  Revision history :
+#   08/06/2013, V1.0 - Creation by N. Bernaerts
+#   08/11/2013, V1.2 - Change parameters
+#   15/10/2017, V1.3 - Merge configuration in single file
+#   05/10/2019, V1.4 - Change log management
+# --------------------------------------------------------
+
+# retreive parameters
+DATABASE_CONFIG="$1"
+DATABASE_LOG="$2"
+
+# temporary files
+TMP_DIR=$(mktemp --tmpdir --directory "backup-database-XXXXXX")
+TMP_LIST="${TMP_DIR}/database.lst"
+
+# log action
+echo "-- Database --" | tee -a "${DATABASE_LOG}"
+
+# set backup parameters
+DATABASE_PASSWD=$(cat "${DATABASE_CONFIG}" | grep "password=" | cut -d'=' -f2-)
+DATABASE_PATH=$(cat "${DATABASE_CONFIG}" | grep "backupdir=" | cut -d'=' -f2-)
+
+# generate backup directories list
+grep "^base=" "${DATABASE_CONFIG}" > "${TMP_LIST}"
+
+# if needed, create backup directory
+mkdir -p "${DATABASE_PATH}"
+
+# loop thru the backup list
+while read LINE
+do
+	# keep line content
+	CONTENT=$(echo "${LINE}" | cut -d'=' -f2-)
+
+	# extract database data
+	DATABASE_LABEL=$(echo "${CONTENT}" | cut -d';' -f1)
+	DATABASE_NAME=$(echo "${LINE}" | cut -d';' -f2)
+	DATABASE_BACKUP="${DATABASE_PATH}/${DATABASE_NAME}.sql"
+
+	# database dump
+	mysqldump -u root "-p${DATABASE_PASSWD}" "${DATABASE_NAME}" > "${DATABASE_BACKUP}"
+
+	# display and log the backup
+	NB_LINE=$(cat "${DATABASE_BACKUP}" | wc -l)
+	[ ${NB_LINE} -gt 0 ] && RESULT="success" || RESULT="error"
+	date +"${RESULT} %H:%M Database ${DATABASE_NAME}" | tee -a "${DATABASE_LOG}"
+done < "${TMP_LIST}"
+
+# remove temporary files
+rm -R "${TMP_DIR}"
+
