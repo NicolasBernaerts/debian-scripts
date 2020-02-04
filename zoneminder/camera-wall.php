@@ -162,7 +162,7 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	$arrCam[$idxDisplay]['id']       = $monitor["Monitor"]["Id"];
 	$arrCam[$idxDisplay]['width']    = $camWidth;
 	$arrCam[$idxDisplay]['height']   = $camHeight;
-	$arrCam[$idxDisplay]['name']     = "[" . $monitor["Monitor"]["Id"] . "] " . $monitor["Monitor"]["Name"];
+	$arrCam[$idxDisplay]['name']     = "<small>[" . $monitor["Monitor"]["Id"] . "]</small> " . $monitor["Monitor"]["Name"];
 	$arrCam[$idxDisplay]['urlthumb'] = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
 	$arrCam[$idxDisplay]['urlzoom']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
 
@@ -181,12 +181,12 @@ setcookie ('cams', serialize($arrCamCookie), 0);
 <style type="text/css">
 	
 *, *::after, *::before { margin:0; padding:0; box-sizing:inherit; }
+
 body { background-color:black; font-family:"Nunito", sans-serif; color:#333; font-weight:300; line-height:1.6;}
 html { box-sizing:border-box; font-size:62.5%; }
-.container { width: 60%; margin: 2rem auto; }
-.gallery_img { width:100%; height:100%; object-fit:cover; }
-span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
+span { position:absolute; z-index:1; padding:0vw 0.3vw; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.7; font-family:arial,serif; font-size:0.8vw; font-style:italic; margin:Opx; }
 
+.gallery_img { width:100%; height:100%; object-fit:cover; }
 <?php
 echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-template-rows:repeat(" . $nbrRow . ", " . $vwRow . "vw); grid-gap:1px; }");
 ?>
