@@ -1,16 +1,16 @@
 <?php
 // -------------------------------------------------------
-// Webcam image wall display, based on ZoneMinder config
+// Zoneminder camera wall display using Zoneminder API
 //
 // Display parameters :
-//   row    - Number of camera rows on the wall (default=6)
-//   column - Number of camera per row on the wall (default=7)
+//   ratio  - Camera ratio (default=1.77)
+//   column - Number of camera per line
 //   width  - Width of the wall in pixels (default=1980px)
-//   height - Height of the wall in pixels (default=1080px)
-//   zoom   - Height of a zoomed image in pixels (default=720px)
+//   zoom   - Width of a zoomed image in pixels (default=1080px)
 //
 // Camera selection :
 //   index  - Index of first cam to display in ZM sequence list
+//   maxcam - Maximum number of cameras to display
 //   cams   - ordered list of cams to display using ZM mid (exemple : 1-10-4-8-14-2)
 //
 // Revision history :
@@ -36,13 +36,25 @@ $arrCamCookie = Array ();
 $arrMonitor   = Array ();
 $arrOrdered   = Array ();
 
+// Parameter : Display ratio for cameras
+$camRatio = 1.77;
+if (isset($_GET["ratio"])) $camRatio = $_GET["ratio"];
+
+// Parameter : Maximum number of cameras
+$maxCam = 0;
+if (isset($_GET["maxcam"])) $maxCam = $_GET["maxcam"];
+
+// Parameter : Number of columns
+$nbrColumn = 0;
+if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
+
 // Parameter : Width of the wall (in pixels)
 $wallWidth = 1920;
 if (isset($_GET["width"])) $wallWidth = $_GET["width"];
 
 // Parameter : Width of the zoomed picture (in pixels)
 $zoomWidth = 1280;
-if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
+if (isset($_GET["zoom"])) $zoomWidth = $_GET["zoom"];
 
 // Parameter : Index of first cam on the wall (starts from 0)
 $wallIndex = 0;	
@@ -108,7 +120,7 @@ if (empty($arrDisplay))
 		$enabled = $monitor["Monitor"]["Enabled"];
 
 		// populate cams array according to camera status, start index and wall size
-		if (($enabled == "1") && ($idxDisplay >= $wallIndex) && ($count < $maxCam))
+		if (($enabled == "1") && ($idxDisplay >= $wallIndex) && (($maxCam == 0) || ($count < $maxCam)))
 		{
 			// add monitor to display list
 			$arrDisplay[] = $idxMonitor;
@@ -122,14 +134,12 @@ if (empty($arrDisplay))
 // number of cameras to display
 $nbrCam = count ($arrDisplay);
 
-// Parameter : Number of camera columns
-$nbrColumn = 7;
-if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
+// if number of column not defined, set it according to total number of cams
+if ($nbrColumn == 0) $nbrColumn = ceil (sqrt ($nbrCam));
 
-// Parameter : Maximum number of cameras
-$maxCam = $nbrColumn * $nbrColumn;
-if (isset($_GET["maxcam"])) $maxCam = $_GET["maxcam"];
-
+// calculate number of rows
+$nbrRow = ceil ($nbrCam / $nbrColumn);
+$vwRow  = floor (100 / $nbrColumn / $camRatio);
 
 // create camera array from sorted array of cams to be displayed
 $count = 0;
@@ -144,14 +154,15 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	$camHeight = $monitor["Monitor"]["Height"];
 
 	// calculate scale factor
-	$scaleThumb = min (100, ceil (100 * $wallWidth / $nbrColumn / $camWidth));
+	$sizeThumb  = $wallWidth / $nbrColumn;
+	$scaleThumb = max (min (100, ceil (100 * $sizeThumb / $camWidth)), min (100, ceil (100 * $sizeThumb / $camHeight)));
 	$scaleZoom  = min (100, ceil (100 * $zoomWidth / $camWidth));
 
 	// add cam to array
 	$arrCam[$idxDisplay]['id']       = $monitor["Monitor"]["Id"];
-	$arrCam[$idxDisplay]['name']     = $monitor["Monitor"]["Name"];
 	$arrCam[$idxDisplay]['width']    = $camWidth;
 	$arrCam[$idxDisplay]['height']   = $camHeight;
+	$arrCam[$idxDisplay]['name']     = "[" . $monitor["Monitor"]["Id"] . "] " . $monitor["Monitor"]["Name"];
 	$arrCam[$idxDisplay]['urlthumb'] = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
 	$arrCam[$idxDisplay]['urlzoom']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
 
@@ -173,12 +184,11 @@ setcookie ('cams', serialize($arrCamCookie), 0);
 body { background-color:black; font-family:"Nunito", sans-serif; color:#333; font-weight:300; line-height:1.6;}
 html { box-sizing:border-box; font-size:62.5%; }
 .container { width: 60%; margin: 2rem auto; }
-.gallery { display:grid; grid-template-columns:repeat(8,1fr); grid-gap:1px; }
 .gallery_img { width:100%; height:100%; object-fit:cover; }
 span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
 
 <?php
-echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-gap:1px; }");
+echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-template-rows:repeat(" . $nbrRow . ", " . $vwRow . "vw); grid-gap:1px; }");
 ?>
 
 </style>
