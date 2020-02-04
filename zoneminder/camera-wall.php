@@ -48,12 +48,8 @@ if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
 $wallWidth = 1920;
 if (isset($_GET["width"])) $wallWidth = $_GET["width"];
 
-// Parameter : Height of the wall (in pixels)
-//$wallHeight = 1920;
-//if (isset($_GET["height"])) $wallHeight = $_GET["height"];
-
-// Parameter : Height of the zoomed picture (in pixels)
-$zoomHeight = 900;
+// Parameter : Width of the zoomed picture (in pixels)
+$zoomWidth = 1280;
 if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
 
 // Parameter : Index of first cam on the wall
@@ -146,27 +142,19 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 
 	// get monitor data
 	$monitor = $arrMonitor["monitors"][$idxMonitor];
+	$camWidth  = $monitor["Monitor"]["Width"];
+	$camHeight = $monitor["Monitor"]["Height"];
+	
 
 	// calculate scale factor
-	$camWidth    = $monitor["Monitor"]["Width"];
-	$camHeight   = $monitor["Monitor"]["Height"];
-	$scaleWidth  = $maxThumbWidth / $camWidth;
-//	$scaleHeight = $maxThumbHeight / $camHeight;
-	$scaleFactor = min ($scaleWidth, $scaleHeight);
-
-	// calculate thumb and zoom scaling
-//	$scaleThumb = ceil (100 * $scaleFactor);
-//	$scaleThumb = ceil (100 * $scaleWidth);
-$scaleThumb = 40;
-	$scaleZoom = ceil (100 * $zoomHeight / $camHeight);
+	$scaleThumb = min (100, ceil (100 * $wallWidth / $nbrColumn / $camWidth));
+	$scaleZoom  = min (100, ceil (100 * $zoomWidth / $camWidth));
 
 	// add cam to array
 	$arrCam[$idxDisplay]['id']     = $monitor["Monitor"]["Id"];
 	$arrCam[$idxDisplay]['name']   = $monitor["Monitor"]["Name"];
 	$arrCam[$idxDisplay]['width']  = $camWidth;
 	$arrCam[$idxDisplay]['height'] = $camHeight;
-//	$arrCam[$idxDisplay]['twidth']  = floor ($camWidth * $scaleFactor);
-//	$arrCam[$idxDisplay]['theight'] = floor ($camHeight * $scaleFactor);
 	$arrCam[$idxDisplay]['urlthumb']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
 	$arrCam[$idxDisplay]['urlzoom']   = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
 
@@ -186,19 +174,17 @@ setcookie ('cams', serialize($arrCamCookie), 0);
 <head>
 
 <style type="text/css">
-body { background-color:black; }
-
 *, *::after, *::before { margin:0; padding:0; box-sizing:inherit; }
-
+body { background-color:black; font-family:"Nunito", sans-serif; color:#333; font-weight:300; line-height:1.6;}
 html { box-sizing:border-box; font-size:62.5%; }
-
-body { font-family: "Nunito", sans-serif; color: #333; font-weight: 300; line-height: 1.6; }
-
 .container { width: 60%; margin: 2rem auto; }
-.gallery { display:grid; grid-template-columns:repeat(8, 1fr); grid-gap:1px; }
-.gallery_img { width:100%; height:100%; object-fit: cover; }
-
+.gallery { display:grid; grid-template-columns:repeat(8,1fr); grid-gap:1px; }
+.gallery_img { width:100%; height:100%; object-fit:cover; }
 span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
+
+<?php
+	echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-gap:1px; }");
+?>
 
 </style>
 
@@ -276,24 +262,11 @@ setTimeout(function() { updateImage(1); }, 2000);
 
 <?php
 
-// initilise counters
-$idxCam = 1;
-$idxRow = 1;
-$idxColumn = 1;
-
 // loop to declare cameras
+$idxCam = 1;
 foreach ($arrCam as $cam) 
 {
-	// calculate label vertical margin according to image size
-	$marginTop = $cam['theight'] - 20;
-
-	// if needed, display new row
-//	if ($idxColumn == 1) { echo "<tr>\n"; }
-
 	// display current camera
-//	echo ("<td><span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
-//	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "' width=100% ></a>");
-//	echo ("</td>\n");
 	echo ("<figure class='gallery_item'>");
 	echo ("<span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
 	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img class='gallery_img' id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "'></a>");
@@ -301,15 +274,8 @@ foreach ($arrCam as $cam)
 
 	// increment counters
 	$idxCam++;
-	$idxColumn++;
-
-	// if needed, end row
-//	if ($idxColumn > $nbrColumn) { echo "</tr>\n"; $idxColumn = 1; $idxRow++; }
 }
-
-// if needed, end row
-//if ($idxColumn > 1) { echo "</tr>\n"; }
-
+	
 ?>
 
 </div> 
