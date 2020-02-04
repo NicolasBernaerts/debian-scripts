@@ -36,14 +36,6 @@ $arrCamCookie = Array ();
 $arrMonitor   = Array ();
 $arrOrdered   = Array ();
 
-// Parameter : Number of camera columns
-$nbrColumn = 7;
-if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
-
-// Parameter : Maximum number of cameras
-$maxCam = $nbrColumn * $nbrColumn;
-if (isset($_GET["maxcam"])) $maxCam = $_GET["maxcam"];
-
 // Parameter : Width of the wall (in pixels)
 $wallWidth = 1920;
 if (isset($_GET["width"])) $wallWidth = $_GET["width"];
@@ -129,6 +121,15 @@ if (empty($arrDisplay))
 
 // number of cameras to display
 $nbrCam = count ($arrDisplay);
+
+// Parameter : Number of camera columns
+$nbrColumn = 7;
+if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
+
+// Parameter : Maximum number of cameras
+$maxCam = $nbrColumn * $nbrColumn;
+if (isset($_GET["maxcam"])) $maxCam = $_GET["maxcam"];
+
 
 // create camera array from sorted array of cams to be displayed
 $count = 0;
