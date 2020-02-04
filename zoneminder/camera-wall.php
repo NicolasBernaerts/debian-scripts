@@ -36,8 +36,8 @@ $arrMonitor   = Array ();
 $arrOrdered   = Array ();
 
 // Parameter : Number of camera lines
-$nbrRow = 6;
-if (isset($_GET["row"])) $nbrRow = $_GET["row"];
+$maxCam = 49;
+if (isset($_GET["maxcam"])) $maxCam = $_GET["maxcam"];
 
 // Parameter : Number of camera columns
 $nbrColumn = 7;
@@ -48,30 +48,30 @@ $wallWidth = 1920;
 if (isset($_GET["width"])) $wallWidth = $_GET["width"];
 
 // Parameter : Height of the wall (in pixels)
-$wallHeight = 1080;
-if (isset($_GET["height"])) $wallHeight = $_GET["height"];
+//$wallHeight = 1920;
+//if (isset($_GET["height"])) $wallHeight = $_GET["height"];
 
 // Parameter : Height of the zoomed picture (in pixels)
 $zoomHeight = 900;
 if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
 
 // Parameter : Index of first cam on the wall
-$wallIndex = 1;	
+$wallIndex = 0;	
 if (isset($_GET["index"])) $wallIndex = $_GET["index"];
 
 // Parameter : List of cams to display
 if (isset($_GET["cams"])) $lstCam = $_GET["cams"];
 
 // calculate size on the wall
-$maxCam = $nbrColumn * $nbrRow;
+//$maxCam = $nbrColumn * $nbrRow;
 $maxThumbWidth  = ceil ($wallWidth / $nbrColumn);
-$maxThumbHeight = ceil ($wallHeight / $nbrRow);
+//$maxThumbHeight = ceil ($wallHeight / $nbrRow);
 $percentColumn  = floor (100 / $nbrColumn);
 
 // login to zoneminder
 $ch = curl_init();
 curl_setopt ($ch,CURLOPT_RETURNTRANSFER, 1);
-curl_setopt ($ch,CURLOPT_URL,$zmURL . "/index.php");
+curl_setopt ($ch,CURLOPT_URL, $zmURL . "/index.php");
 curl_setopt ($ch,CURLOPT_HEADER, 1);
 curl_setopt ($ch,CURLOPT_POST, 4);
 curl_setopt ($ch,CURLOPT_POSTFIELDS, "username=" . $zmUser . "&password=" . $zmPass . "&action=login&view=console");
@@ -86,7 +86,7 @@ $arrCamCookie['session'] = $arrZMCookie[1][0];
 $ch = curl_init();
 curl_setopt ($ch, CURLOPT_RETURNTRANSFER, 1);
 curl_setopt ($ch, CURLOPT_URL, $zmURL . "/api/monitors.json");
-curl_setopt ($ch, CURLOPT_HTTPHEADER, array("Cookie: " . $arrCamCookie['session']));
+curl_setopt ($ch, CURLOPT_HTTPHEADER, array ("Cookie: " . $arrCamCookie['session']));
 $json = curl_exec ($ch);
 curl_close ($ch);
 
@@ -150,11 +150,13 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	$camWidth    = $monitor["Monitor"]["Width"];
 	$camHeight   = $monitor["Monitor"]["Height"];
 	$scaleWidth  = $maxThumbWidth / $camWidth;
-	$scaleHeight = $maxThumbHeight / $camHeight;
+//	$scaleHeight = $maxThumbHeight / $camHeight;
 	$scaleFactor = min ($scaleWidth, $scaleHeight);
 
 	// calculate thumb and zoom scaling
-	$scaleThumb = ceil (100 * $scaleFactor);
+//	$scaleThumb = ceil (100 * $scaleFactor);
+//	$scaleThumb = ceil (100 * $scaleWidth);
+$scaleThumb = 40;
 	$scaleZoom = ceil (100 * $zoomHeight / $camHeight);
 
 	// add cam to array
@@ -162,8 +164,8 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	$arrCam[$idxDisplay]['name']   = $monitor["Monitor"]["Name"];
 	$arrCam[$idxDisplay]['width']  = $camWidth;
 	$arrCam[$idxDisplay]['height'] = $camHeight;
-	$arrCam[$idxDisplay]['twidth']  = floor ($camWidth * $scaleFactor);
-	$arrCam[$idxDisplay]['theight'] = floor ($camHeight * $scaleFactor);
+//	$arrCam[$idxDisplay]['twidth']  = floor ($camWidth * $scaleFactor);
+//	$arrCam[$idxDisplay]['theight'] = floor ($camHeight * $scaleFactor);
 	$arrCam[$idxDisplay]['urlthumb']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
 	$arrCam[$idxDisplay]['urlzoom']   = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
 
@@ -184,11 +186,19 @@ setcookie ('cams', serialize($arrCamCookie), 0);
 
 <style type="text/css">
 body { background-color:black; }
-table { width:100%; border:0px; padding:0px; margin:0px; }
-table tr { padding:0px; margin:0px; }
-table td { padding:0px; margin:0px; width:<?php echo ($percentColumn); ?>%; }
-table img { padding:1px; margin:0px; border-radius:5px; border:0px solid black; } 
-table span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
+
+*, *::after, *::before { margin:0; padding:0; box-sizing:inherit; }
+
+html { box-sizing:border-box; font-size:62.5%; }
+
+body { font-family: "Nunito", sans-serif; color: #333; font-weight: 300; line-height: 1.6; }
+
+.container { width: 60%; margin: 2rem auto; }
+.gallery { display:grid; grid-template-columns:repeat(8, 1fr); grid-gap:1px; }
+.gallery_img { width:100%; height:100%; object-fit: cover; }
+
+span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
+
 </style>
 
 <title><?php echo ($strWallName . " - " . $nbrCam . " cameras"); ?></title>
@@ -260,7 +270,8 @@ setTimeout(function() { updateImage(1); }, 2000);
 </head>
 
 <body id="wall" onload="setupZoom()">
-<table>
+
+<div class="gallery">
 
 <?php
 
@@ -276,27 +287,31 @@ foreach ($arrCam as $cam)
 	$marginTop = $cam['theight'] - 20;
 
 	// if needed, display new row
-	if ($idxColumn == 1) { echo "<tr>\n"; }
+//	if ($idxColumn == 1) { echo "<tr>\n"; }
 
 	// display current camera
-	echo ("<td><span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
-	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "' width=100% ></a>");
-	echo ("</td>\n");
+//	echo ("<td><span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
+//	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "' width=100% ></a>");
+//	echo ("</td>\n");
+	echo ("<figure class='gallery_item'>");
+	echo ("<span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
+	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img class='gallery_img' id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "'></a>");
+	echo ("</figure>");
 
 	// increment counters
 	$idxCam++;
 	$idxColumn++;
 
 	// if needed, end row
-	if ($idxColumn > $nbrColumn) { echo "</tr>\n"; $idxColumn = 1; $idxRow++; }
+//	if ($idxColumn > $nbrColumn) { echo "</tr>\n"; $idxColumn = 1; $idxRow++; }
 }
 
 // if needed, end row
-if ($idxColumn > 1) { echo "</tr>\n"; }
+//if ($idxColumn > 1) { echo "</tr>\n"; }
 
 ?>
 
-</table> 
+</div> 
 
 </body>
 
