@@ -36,13 +36,13 @@ $arrCamCookie = Array ();
 $arrMonitor   = Array ();
 $arrOrdered   = Array ();
 
-// Parameter : Number of camera lines
-$maxCam = 49;
-if (isset($_GET["maxcam"])) $maxCam = $_GET["maxcam"];
-
 // Parameter : Number of camera columns
 $nbrColumn = 7;
 if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
+
+// Parameter : Maximum number of cameras
+$maxCam = $nbrColumn * $nbrColumn;
+if (isset($_GET["maxcam"])) $maxCam = $_GET["maxcam"];
 
 // Parameter : Width of the wall (in pixels)
 $wallWidth = 1920;
@@ -52,18 +52,12 @@ if (isset($_GET["width"])) $wallWidth = $_GET["width"];
 $zoomWidth = 1280;
 if (isset($_GET["zoom"])) $zoomHeight = $_GET["zoom"];
 
-// Parameter : Index of first cam on the wall
+// Parameter : Index of first cam on the wall (starts from 0)
 $wallIndex = 0;	
 if (isset($_GET["index"])) $wallIndex = $_GET["index"];
 
 // Parameter : List of cams to display
 if (isset($_GET["cams"])) $lstCam = $_GET["cams"];
-
-// calculate size on the wall
-//$maxCam = $nbrColumn * $nbrRow;
-$maxThumbWidth  = ceil ($wallWidth / $nbrColumn);
-//$maxThumbHeight = ceil ($wallHeight / $nbrRow);
-$percentColumn  = floor (100 / $nbrColumn);
 
 // login to zoneminder
 $ch = curl_init();
@@ -144,19 +138,18 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	$monitor = $arrMonitor["monitors"][$idxMonitor];
 	$camWidth  = $monitor["Monitor"]["Width"];
 	$camHeight = $monitor["Monitor"]["Height"];
-	
 
 	// calculate scale factor
 	$scaleThumb = min (100, ceil (100 * $wallWidth / $nbrColumn / $camWidth));
 	$scaleZoom  = min (100, ceil (100 * $zoomWidth / $camWidth));
 
 	// add cam to array
-	$arrCam[$idxDisplay]['id']     = $monitor["Monitor"]["Id"];
-	$arrCam[$idxDisplay]['name']   = $monitor["Monitor"]["Name"];
-	$arrCam[$idxDisplay]['width']  = $camWidth;
-	$arrCam[$idxDisplay]['height'] = $camHeight;
-	$arrCam[$idxDisplay]['urlthumb']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
-	$arrCam[$idxDisplay]['urlzoom']   = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
+	$arrCam[$idxDisplay]['id']       = $monitor["Monitor"]["Id"];
+	$arrCam[$idxDisplay]['name']     = $monitor["Monitor"]["Name"];
+	$arrCam[$idxDisplay]['width']    = $camWidth;
+	$arrCam[$idxDisplay]['height']   = $camHeight;
+	$arrCam[$idxDisplay]['urlthumb'] = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
+	$arrCam[$idxDisplay]['urlzoom']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
 
 	// prepare cookie array
 	$arrCamCookie['cam'][$count] = $monitor["Monitor"]["Id"];
@@ -174,6 +167,7 @@ setcookie ('cams', serialize($arrCamCookie), 0);
 <head>
 
 <style type="text/css">
+	
 *, *::after, *::before { margin:0; padding:0; box-sizing:inherit; }
 body { background-color:black; font-family:"Nunito", sans-serif; color:#333; font-weight:300; line-height:1.6;}
 html { box-sizing:border-box; font-size:62.5%; }
@@ -183,7 +177,7 @@ html { box-sizing:border-box; font-size:62.5%; }
 span { position:absolute; z-index:1; padding:2px 5px; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.6; font-family:arial,serif; font-size:0.8em; font-style:italic; margin-left:4px; margin-top:2px; }
 
 <?php
-	echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-gap:1px; }");
+echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-gap:1px; }");
 ?>
 
 </style>
@@ -261,7 +255,6 @@ setTimeout(function() { updateImage(1); }, 2000);
 <div class="gallery">
 
 <?php
-
 // loop to declare cameras
 $idxCam = 1;
 foreach ($arrCam as $cam) 
@@ -274,8 +267,7 @@ foreach ($arrCam as $cam)
 
 	// increment counters
 	$idxCam++;
-}
-	
+}	
 ?>
 
 </div> 
