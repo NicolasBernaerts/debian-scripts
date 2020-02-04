@@ -127,6 +127,9 @@ if (empty($arrDisplay))
 	}
 }
 
+// number of cameras to display
+$nbrCam = count ($arrDisplay);
+
 // create camera array from sorted array of cams to be displayed
 $count = 0;
 foreach ($arrDisplay as $idxDisplay => $idxMonitor) 
@@ -154,9 +157,6 @@ foreach ($arrDisplay as $idxDisplay => $idxMonitor)
 	// prepare cookie array
 	$arrCamCookie['cam'][$count] = $monitor["Monitor"]["Id"];
 }
-
-// number of cameras to display
-$nbrCam = count ($arrCam);
 
 // save array in cookie (to be used by cam-status.php)
 setcookie ('cams', serialize($arrCamCookie), 0);
