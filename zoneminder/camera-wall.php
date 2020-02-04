@@ -22,6 +22,7 @@
 //   15/05/2018 - V2.3 - Add alert status
 //   18/11/2018 - V2.4 - Add cams parameter to specify camera list to be displayed
 //   22/01/2019 - V2.5 - Remove disabled cams from the wall
+//   03/02/2020 - V3.0 - Switch the wall from table to grid
 // -------------------------------------------------------
 
 // zoneminder configuration
