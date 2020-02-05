@@ -141,6 +141,9 @@ if ($nbrColumn == 0) $nbrColumn = ceil (sqrt ($nbrCam));
 $nbrRow = ceil ($nbrCam / $nbrColumn);
 $vwRow  = floor (100 / $nbrColumn / $camRatio);
 
+// calculate font size according to number of columns
+$fontSize = 0.8 * ((7 / 3) - ($nbrColumn / 6));
+
 // create camera array from sorted array of cams to be displayed
 $count = 0;
 foreach ($arrDisplay as $idxDisplay => $idxMonitor) 
@@ -182,12 +185,16 @@ setcookie ('cams', serialize($arrCamCookie), 0);
 	
 *, *::after, *::before { margin:0; padding:0; box-sizing:inherit; }
 
-body { background-color:black; font-family:"Nunito", sans-serif; color:#333; font-weight:300; line-height:1.6;}
+body { background-color:black; }
 html { box-sizing:border-box; font-size:62.5%; }
-span { position:absolute; z-index:1; padding:0vw 0.3vw; border-radius:5px; border:0px solid white; color:black; background-color:white; opacity:0.7; font-family:arial,serif; font-size:0.8vw; font-style:italic; margin:Opx; }
+span { position:absolute; z-index:1; margin:Opx; padding:0.1vw 0.3vw; border-radius:5px; border:0px solid white; 
+       color:black; background-color:white; opacity:0.7; font-family:arial,serif; font-style:italic; }
 
 .gallery_img { width:100%; height:100%; object-fit:cover; }
+
+
 <?php
+echo ("span { font-size:" . $fontSize . "vw; }");
 echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-template-rows:repeat(" . $nbrRow . ", " . $vwRow . "vw); grid-gap:1px; }");
 ?>
 
