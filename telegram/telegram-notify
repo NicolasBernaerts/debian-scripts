@@ -16,6 +16,7 @@
 #    28/06/2018, V1.7 - Add --warning and --config options, idea from Markus Hof
 #    08/08/2019, V1.8 - Add --file option (file holding text to display)
 #    23/09/2019, V1.9 - Add --quiet option, thanks to Alberto Panu
+#    06/02/2020, V2.0 - Add --disable_preview option, thanks to Alex P.
 # ---------------------------------------------------
 
 # initialise variables
@@ -24,6 +25,7 @@ DISPLAY_TEXT=""
 DISPLAY_PICT=""
 DISPLAY_ICON=""
 DISPLAY_MODE="markdown"
+DISABLE_PREVIEW="false"
 DISPLAY_SILENT="false"
 QUIET="false"
 
@@ -53,6 +55,7 @@ then
   echo "Options are :"
   echo "  --title <title>     Title of the message (if text message)"
   echo "  --html              Use HTML mode for text content (markdown by default)"
+  echo "  --disable_preview   Don't create previews for links, image and/or document"
   echo "  --silent            Send message in silent mode (no user notification on the client)"
   echo "  --quiet             Don't print message to stdout"
   echo "  --config <file>     use alternate config file, instead of default ${FILE_CONF}"
@@ -79,6 +82,7 @@ do
     "--document") shift; DOCUMENT="$1"; shift; ;;
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
     "--html") DISPLAY_MODE="html"; shift; ;;
+    "--disable_preview") DISABLE_PREVIEW="true"; shift; ;;
     "--silent") DISPLAY_SILENT="true"; shift; ;;
     "--quiet") QUIET="true"; shift; ;;
     "--config") shift; FILE_CONF="$1"; shift; ;;
@@ -172,19 +176,19 @@ ARR_OPTIONS=( "--silent" "--insecure" )
 if [ "${PICTURE}" != "" ]
 then
   # display image
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto")
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto")
 
 # if document defined, send it with icon and caption
 elif [ "${DOCUMENT}" != "" ]
 then
   # transfer document
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument")
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument")
 
 # else, if text is defined, display it with icon and title
 elif [ "${NOTIFY_TEXT}" != "" ]
 then
   # display text message
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage")
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "disable_web_page_preview=${DISABLE_PREVIEW}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage")
 
 #  else, nothing, error
 else
