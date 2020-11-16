@@ -23,12 +23,15 @@
 //   18/11/2018 - V2.4 - Add cams parameter to specify camera list to be displayed
 //   22/01/2019 - V2.5 - Remove disabled cams from the wall
 //   03/02/2020 - V3.0 - Switch the wall from table to grid
+//   15/11/2020 - V3.1 - Switch to authentification token for ZM 1.34 API compatibility (the dirty way)
+//                       Add hd and 4k resolution
 // -------------------------------------------------------
 
 // zoneminder configuration
 require_once ("camera-config.inc");
 
 // initialisation
+$arrAnswer    = Array ();
 $arrCam       = Array ();
 $arrDisplay   = Array ();
 $arrZMCookie  = Array ();
@@ -52,8 +55,22 @@ if (isset($_GET["column"])) $nbrColumn = $_GET["column"];
 $wallWidth = 1920;
 if (isset($_GET["width"])) $wallWidth = $_GET["width"];
 
+// Parameter : wall HD (1920x1080)
+if (isset($_GET["hd"]))
+{
+  $wallWidth = 1920;
+  $camRatio  = 1.77;
+}
+
+// Parameter : wall 4K (3840x2160)
+if (isset($_GET["4k"]))
+{
+  $wallWidth = 3840;
+  $camRatio  = 1.77;
+}
+
 // Parameter : Width of the zoomed picture (in pixels)
-$zoomWidth = 1280;
+$zoomWidth = min (1920, $wallWidth);
 if (isset($_GET["zoom"])) $zoomWidth = $_GET["zoom"];
 
 // Parameter : Index of first cam on the wall (starts from 0)
@@ -63,25 +80,10 @@ if (isset($_GET["index"])) $wallIndex = $_GET["index"];
 // Parameter : List of cams to display
 if (isset($_GET["cams"])) $lstCam = $_GET["cams"];
 
-// login to zoneminder
-$ch = curl_init();
-curl_setopt ($ch,CURLOPT_RETURNTRANSFER, 1);
-curl_setopt ($ch,CURLOPT_URL, $zmURL . "/index.php");
-curl_setopt ($ch,CURLOPT_HEADER, 1);
-curl_setopt ($ch,CURLOPT_POST, 4);
-curl_setopt ($ch,CURLOPT_POSTFIELDS, "username=" . $zmUser . "&password=" . $zmPass . "&action=login&view=console");
-$response = curl_exec ($ch);
-curl_close ($ch);
-
-// retrieve session cookie
-preg_match_all ('/^Set-Cookie:\s*([^;]*)/mi', $response, $arrZMCookie);
-$arrCamCookie['session'] = $arrZMCookie[1][0];
-
 // get monitor list
 $ch = curl_init();
 curl_setopt ($ch, CURLOPT_RETURNTRANSFER, 1);
-curl_setopt ($ch, CURLOPT_URL, $zmURL . "/api/monitors.json");
-curl_setopt ($ch, CURLOPT_HTTPHEADER, array ("Cookie: " . $arrCamCookie['session']));
+curl_setopt ($ch, CURLOPT_URL, $zmURL . "/api/monitors.json?" . $strToken);
 $json = curl_exec ($ch);
 curl_close ($ch);
 
@@ -91,44 +93,44 @@ $arrMonitor = json_decode ($json, true);
 // if monitors list is provided, generate array of cams to be displayed
 if (isset($lstCam))
 {
-	// loop thru candidates
-	$arrCandidate = explode ("-", $lstCam);
-	foreach ($arrCandidate as $idxCandidate)
-	{
-		// loop thru monitors to get their Id
-		foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor)
-		{
-			// if monitor index is candidate, add it to the display list
-			if ($idxCandidate == $monitor["Monitor"]["Id"]) $arrDisplay[] = $idxMonitor;
-		}
-	}
+  // loop thru candidates
+  $arrCandidate = explode ("-", $lstCam);
+  foreach ($arrCandidate as $idxCandidate)
+  {
+    // loop thru monitors to get their Id
+    foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor)
+    {
+      // if monitor index is candidate, add it to the display list
+      if ($idxCandidate == $monitor["Monitor"]["Id"]) $arrDisplay[] = $idxMonitor;
+    }
+  }
 }
 
 // if no list provided, generate ordered list from start index and max number of cams
 if (empty($arrDisplay))
 {
-	// sort monitor array in sequence order
-	foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor) $arrOrdered[$idxMonitor] = $monitor["Monitor"]["Sequence"];
-	asort ($arrOrdered);
+  // sort monitor array in sequence order
+  foreach ($arrMonitor["monitors"] as $idxMonitor => $monitor) $arrOrdered[$idxMonitor] = $monitor["Monitor"]["Sequence"];
+  asort ($arrOrdered);
 	
-	// loop thru ordered monitors to add monitorr to the array of cams to be displayed
-	$count = 0;
-	foreach ($arrOrdered as $idxMonitor => $idxDisplay) 
-	{
-		# check if monitor is enabled
-		$monitor = $arrMonitor["monitors"][$idxMonitor];
-		$enabled = $monitor["Monitor"]["Enabled"];
+  // loop thru ordered monitors to add monitorr to the array of cams to be displayed
+  $count = 0;
+  foreach ($arrOrdered as $idxMonitor => $idxDisplay) 
+  {
+    # check if monitor is enabled
+    $monitor = $arrMonitor["monitors"][$idxMonitor];
+    $enabled = $monitor["Monitor"]["Enabled"];
 
-		// populate cams array according to camera status, start index and wall size
-		if (($enabled == "1") && ($idxDisplay >= $wallIndex) && (($maxCam == 0) || ($count < $maxCam)))
-		{
-			// add monitor to display list
-			$arrDisplay[] = $idxMonitor;
+    // populate cams array according to camera status, start index and wall size
+    if (($enabled == "1") && ($idxDisplay >= $wallIndex) && (($maxCam == 0) || ($count < $maxCam)))
+    {
+      // add monitor to display list
+      $arrDisplay[] = $idxMonitor;
 
-			// increment counter
-			$count++;
-		}
-	}
+      // increment counter
+      $count++;
+    }
+  }
 }
 
 // number of cameras to display
@@ -142,35 +144,35 @@ $nbrRow = ceil ($nbrCam / $nbrColumn);
 $vwRow  = floor (100 / $nbrColumn / $camRatio);
 
 // calculate font size according to number of columns
-$fontSize = 0.8 * ((7 / 3) - ($nbrColumn / 6));
+$fontSize = 0.7 * ((7 / 3) - ($nbrColumn / 6));
 
 // create camera array from sorted array of cams to be displayed
 $count = 0;
 foreach ($arrDisplay as $idxDisplay => $idxMonitor) 
 {
-	// increment counter
-	$count++;
+  // increment counter
+  $count++;
 
-	// get monitor data
-	$monitor = $arrMonitor["monitors"][$idxMonitor];
-	$camWidth  = $monitor["Monitor"]["Width"];
-	$camHeight = $monitor["Monitor"]["Height"];
+  // get monitor data
+  $monitor = $arrMonitor["monitors"][$idxMonitor];
+  $camWidth  = $monitor["Monitor"]["Width"];
+  $camHeight = $monitor["Monitor"]["Height"];
 
-	// calculate scale factor
-	$sizeThumb  = $wallWidth / $nbrColumn;
-	$scaleThumb = max (min (100, ceil (100 * $sizeThumb / $camWidth)), min (100, ceil (100 * $sizeThumb / $camHeight)));
-	$scaleZoom  = min (100, ceil (100 * $zoomWidth / $camWidth));
+  // calculate scale factor
+  $sizeThumb  = $wallWidth / $nbrColumn;
+  $scaleThumb = max (min (100, ceil (100 * $sizeThumb / $camWidth)), min (100, ceil (100 * $sizeThumb / $camHeight)));
+  $scaleZoom  = ceil (100 * $zoomWidth / $camWidth);
 
-	// add cam to array
-	$arrCam[$idxDisplay]['id']       = $monitor["Monitor"]["Id"];
-	$arrCam[$idxDisplay]['width']    = $camWidth;
-	$arrCam[$idxDisplay]['height']   = $camHeight;
-	$arrCam[$idxDisplay]['name']     = "<small>[" . $monitor["Monitor"]["Id"] . "]</small> " . $monitor["Monitor"]["Name"];
-	$arrCam[$idxDisplay]['urlthumb'] = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
-	$arrCam[$idxDisplay]['urlzoom']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
+  // add cam to array
+  $arrCam[$idxDisplay]['id']       = $monitor["Monitor"]["Id"];
+  $arrCam[$idxDisplay]['width']    = $camWidth;
+  $arrCam[$idxDisplay]['height']   = $camHeight;
+  $arrCam[$idxDisplay]['name']     = "[" . $monitor["Monitor"]["Id"] . "] " . $monitor["Monitor"]["Name"];
+  $arrCam[$idxDisplay]['urlthumb'] = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleThumb . "&timestamp=1";
+  $arrCam[$idxDisplay]['urlzoom']  = "/camera-image.jpeg.php?id=" . $monitor["Monitor"]["Id"] . "&scale=" . $scaleZoom  . "&timestamp=1";
 
-	// prepare cookie array
-	$arrCamCookie['cam'][$count] = $monitor["Monitor"]["Id"];
+  // prepare cookie array
+  $arrCamCookie['cam'][$count] = $monitor["Monitor"]["Id"];
 }
 
 // save array in cookie (to be used by cam-status.php)
@@ -192,7 +194,6 @@ span { position:absolute; z-index:1; margin:Opx; padding:0.1vw 0.3vw; border-rad
 
 .gallery_img { width:100%; height:100%; object-fit:cover; }
 
-
 <?php
 echo ("span { font-size:" . $fontSize . "vw; }");
 echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ", 1fr); grid-template-rows:repeat(" . $nbrRow . ", " . $vwRow . "vw); grid-gap:1px; }");
@@ -211,55 +212,54 @@ nbrCam="<?php echo ($nbrCam); ?>";
 
 function updateImage(camIndex)
 {
-	// get cam image ID
-	camImgId="cam" + camIndex;
+  // get cam image ID
+  camImgId="cam" + camIndex;
 
-	// if cam image element is fully downloaded
-	if (document.getElementById(camImgId).complete == true) 
-	{
-		now=new Date();
+  // if cam image element is fully downloaded
+  if (document.getElementById(camImgId).complete == true) 
+  {
+    now=new Date();
 
-		// update cam index to next cam
-		camIndex++;
-		if (camIndex > nbrCam) camIndex=1;
+    // update cam index to next cam
+    camIndex++;
+    if (camIndex > nbrCam) camIndex=1;
 
-		// update next cam URL to force refresh
-		camImgId="cam" + camIndex;
-		camImg=document.getElementById(camImgId);
-		camImgURL=camImg.src;
-		camImg.src=camImgURL.substring(0,camImgURL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
+    // update next cam URL to force refresh
+    camImgId="cam" + camIndex;
+    camImg=document.getElementById(camImgId);
+    camImgURL=camImg.src;
+    camImg.src=camImgURL.substring(0,camImgURL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
 
-		// get next cam alarm status
-		statusReq = new XMLHttpRequest();
-		statusReq.open("GET", "camera-status.php?index=" + camIndex, true);
-		statusReq.onreadystatechange = function ()
-		{
-			spanId="span" + camIndex;
-			spanObj=document.getElementById(spanId);
-			spanObj.style.backgroundColor = statusReq.responseText;
-		}
-		statusReq.send(null);
-	}
+    // get next cam alarm status
+    statusReq = new XMLHttpRequest();
+    statusReq.open("GET", "camera-status.php?index=" + camIndex, true);
+    statusReq.onreadystatechange = function ()
+    {
+      spanId="span" + camIndex;
+      spanObj=document.getElementById(spanId);
+      spanObj.style.backgroundColor = statusReq.responseText;
+    }
+    statusReq.send(null);
+  }
 
-	// get zoom image element
-	zoomImg=document.getElementById('ZoomImage');
+  // get zoom image element
+  zoomImg=document.getElementById('ZoomImage');
 
-	// if zoom image is displayed
-	if (zoomImg != null)
-	{
-		// if zoom image element is fully downloaded
-		if (zoomImg.complete == true) 
-		{
-			now=new Date();
+  // if zoom image is displayed
+  if (zoomImg != null)
+  {
+    // if zoom image element is fully downloaded
+    if (zoomImg.complete == true) 
+    {
+      // update next cam URL to force refresh
+      now=new Date();
+      zoomImgURL=zoomImg.src;
+      zoomImg.src=zoomImgURL.substring(0,zoomImgURL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
+    }
+  }
 
-			// update next cam URL to force refresh
-			zoomImgURL=zoomImg.src;
-			zoomImg.src=zoomImgURL.substring(0,zoomImgURL.indexOf("timestamp=")) + 'timestamp=' + now.getTime();
-		}
-	}
-
-	// call update for current camera in 10 ms
-	setTimeout(function() { updateImage(camIndex); }, 10);
+  // call update for current camera in 10 ms
+  setTimeout(function() { updateImage(camIndex); }, 10);
 }
 
 // call first update for first camera in 2 s
@@ -277,16 +277,19 @@ setTimeout(function() { updateImage(1); }, 2000);
 $idxCam = 1;
 foreach ($arrCam as $cam) 
 {
-	// display current camera
-	echo ("<figure class='gallery_item'>");
-	echo ("<span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
-	echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img class='gallery_img' id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "'></a>");
-	echo ("</figure>");
+  // display current camera
+  echo ("<figure class='gallery_item'>");
+  echo ("<span id='span" . $idxCam . "' >" . $cam['name'] . "</span>");
+  echo ("<a href='" . $cam['urlzoom'] . "' title='" . $cam['name'] . "' ><img class='gallery_img' id='cam" . $idxCam . "' src='" . $cam['urlthumb'] . "'></a>");
+  echo ("</figure>\n");
 
-	// increment counters
-	$idxCam++;
+  // increment counters
+  $idxCam++;
 }	
+
+echo ($arrAnswer);
 ?>
+
 
 </div> 
 

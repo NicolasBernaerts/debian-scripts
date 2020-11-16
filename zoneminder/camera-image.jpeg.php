@@ -4,6 +4,7 @@
 //
 // Revision history :
 //   10/11/2017 - V1.0 - Creation from N. Bernaerts
+//   15/11/2020 - V1.1 - Switch to authentification token
 // -------------------------------------------------------
 
 // zoneminder configuration
@@ -23,7 +24,7 @@ $authKey = $zmSecret . $zmUser . $zmPass . $arrTime[2] . $arrTime[3] . $arrTime[
 $authHash = md5 ($authKey);
 
 // generate zoneminder URL
-$imgURL = $zmURL . "/cgi-bin/zms?mode=single&monitor=" . $monitorId . "&scale=" . $monitorScale . "&user=" . $zmUser . "&pass=" . $zmPass;
+$imgURL = $zmURL . "/cgi-bin/zms?mode=single&monitor=" . $monitorId . "&scale=" . $monitorScale . "&" . $strToken;
 
 // set jpeg header
 header("Content-type: image/jpeg");
