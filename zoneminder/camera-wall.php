@@ -25,7 +25,7 @@
 //   03/02/2020 - V3.0 - Switch the wall from table to grid
 //   15/11/2020 - V3.1 - Switch to authentification token for ZM 1.34 API compatibility (the dirty way)
 //                       Add hd and 4k resolution
-//    21/05/2021 - V3.2 - Bugfix: Disable loading ZoomImage if it isn't visible
+//   21/05/2021 - V3.2 - Bugfix: Disable loading ZoomImage if it isn't visible
 // -------------------------------------------------------
 
 // zoneminder configuration
