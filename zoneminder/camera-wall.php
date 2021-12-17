@@ -25,6 +25,7 @@
 //   03/02/2020 - V3.0 - Switch the wall from table to grid
 //   15/11/2020 - V3.1 - Switch to authentification token for ZM 1.34 API compatibility (the dirty way)
 //                       Add hd and 4k resolution
+//    21/05/2021 - V3.2 - Bugfix: Disable loading ZoomImage if it isn't visible
 // -------------------------------------------------------
 
 // zoneminder configuration
@@ -210,6 +211,16 @@ echo (".gallery { display:grid; grid-template-columns:repeat(" . $nbrColumn . ",
 // total number of cams on the wall
 nbrCam="<?php echo ($nbrCam); ?>";
 
+function zoomboxActive()
+{
+  zoomClose = document.getElementById('ZoomClose');
+  if (zoomClose != null)
+  {
+    return zoomClose.style.visibility !== 'hidden';
+  }
+  return false;
+}
+
 function updateImage(camIndex)
 {
   // get cam image ID
@@ -246,7 +257,7 @@ function updateImage(camIndex)
   zoomImg=document.getElementById('ZoomImage');
 
   // if zoom image is displayed
-  if (zoomImg != null)
+  if (zoomImg != null && zoomboxActive())
   {
     // if zoom image element is fully downloaded
     if (zoomImg.complete == true) 
