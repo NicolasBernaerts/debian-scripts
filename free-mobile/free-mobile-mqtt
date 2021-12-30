@@ -1,0 +1,72 @@
+#!/bin/bash
+# ---------------------------------------------------
+# Retrieve Free mobile line data from your account
+# and publish it on your MQTT broker
+#
+# This script needs git, jq and pup utility
+# Here is how to install them on Debian/Ubuntu :
+#   $ sudo apt install git jq golang-go
+#   $ go get github.com/ericchiang/pup
+#   $ sudo mv ~/go/bin/pup /usr/local/bin 
+#
+# Revision history :
+#   29/12/2021, V1.0 - Creation by N. Bernaerts
+# ---------------------------------------------------
+
+# Please fill up this section according
+# to your Free Mobile account and MQTT broker
+# =======================================
+
+YOUR_FREE_LOGIN="YourLogin"
+YOUR_FREE_PWD="YourPassword"
+
+MQTT_URL="www.your.mqtt.broker"
+MQTT_PORT="1883"
+MQTT_LOGIN="BrokerLogin"
+MQTT_PWD="BrokerPassword"
+MQTT_TOPIC="topic/of/your/account"
+
+# =======================================
+ 
+# free mobile account page
+FREE_URL="https://mobile.free.fr/account/"
+
+# generate and go to temporary directory
+TMP_DIR=$(mktemp -t -d "free-XXXXXXXX")
+TMP_COOKIE="${TMP_DIR}/cookie.txt"
+TMP_HTML="${TMP_DIR}/page.html"
+TMP_JSON="${TMP_DIR}/page.json"
+TMP_MQTT="${TMP_DIR}/mqtt.json"
+
+# read account data
+curl --silent --cookie-jar "${TMP_COOKIE}" --form "login-ident=${YOUR_FREE_LOGIN}" --form "login-pwd=${YOUR_FREE_PWD}" "${FREE_URL}"
+curl --silent -b "${TMP_COOKIE}" "${FREE_URL}" > "${TMP_HTML}"
+
+# extract line from page
+FREE_LINE=$(cat "${TMP_HTML}" | pup 'div.current-user div.smaller' json{} | jq --raw-output '.[1] .children[0] .text')
+echo "{\"Line\":\"${FREE_LINE}\"}" > "${TMP_MQTT}"
+
+# extract data for local and roaming
+ARR_REGION=( "local" "roaming" )
+for REGION in ${ARR_REGION[@]}
+do
+	cat "${TMP_HTML}" | pup "div.conso-${REGION} div.conso__text span.info json{}" > "${TMP_JSON}"
+	CALL_EMIS=$(cat "${TMP_JSON}" | jq --raw-output '.[0] .text' )
+	CALL_RECU=$(cat "${TMP_JSON}" | jq --raw-output '.[1] .text' )
+	CALL_HORS=$(cat "${TMP_JSON}" | jq --raw-output '.[2] .text' )
+	SMS_EMIS=$(cat "${TMP_JSON}" | jq --raw-output '.[3] .text' )
+	SMS_HORS=$(cat "${TMP_JSON}" | jq --raw-output '.[4] .text' )
+	DATA_TOTAL=$(cat "${TMP_JSON}" | jq --raw-output '.[5] .text' )
+	DATA_HORS=$(cat "${TMP_JSON}" | jq --raw-output '.[6] .text' )
+	MMS_EMIS=$(cat "${TMP_JSON}" | jq --raw-output '.[7] .text' )
+	MMS_HORS=$(cat "${TMP_JSON}" | jq --raw-output '.[8] .text' )
+	echo "{\"${REGION}\":{\"Appel\":{\"Emis\":\"${CALL_EMIS}\",\"Recu\":\"${CALL_RECU}\",\"Hors\":\"${CALL_HORS}\"},\"SMS\":{\"Emis\":\"${SMS_EMIS}\",\"Hors\":\"${SMS_HORS}\"},\"MMS\":{\"Emis\":\"${MMS_EMIS}\",\"Hors\":\"${MMS_HORS}\"},\"Data\":{\"Total\":\"${DATA_TOTAL}\",\"Hors\":\"${DATA_HORS}\"}}}" >> "${TMP_MQTT}"
+done
+
+# publish value
+cat "${TMP_MQTT}" | mosquitto_pub -h "${MQTT_URL}" -p "${MQTT_PORT}" -u "${MQTT_LOGIN}" -P "${MQTT_PWD}" -t "${MQTT_TOPIC}" -l
+
+# remove temporary directory
+rm -r "${TMP_DIR}"
+
+
