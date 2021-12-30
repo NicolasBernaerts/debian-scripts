@@ -7,7 +7,7 @@ It has been tested on Debian and Ubuntu.
 This script needs :
   * git
   * jq
-  * pup
+  * pup (from https://github.com/ericchiang/pup)
 
 Here is how to install them on Debian :
 ```
