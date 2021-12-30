@@ -16,6 +16,9 @@ Here is how to install them on Debian :
 # mv ~/go/bin/pup /usr/local/bin 
 ```
 
+You can now place the script under **/etc/cron-hourly/free-mobile-mqtt**
+It will run every hour and publish your accout status.
+
 If everything works as expected, your Free Mobile account data should be published on your MQTT broker :
 ```
 topic/of/your/account {"Line":"07 02 03 04 05"}
