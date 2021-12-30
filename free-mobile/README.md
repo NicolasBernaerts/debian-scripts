@@ -1,8 +1,8 @@
 # Publish your Free mobile data thru MQTT
 
-This simple script allows you to publish your Free Mobile meters (call, SMS, MMS and Data) on any MQTT broker.
-This allows me to get almost real time values without any need to connect to my account.
-It has been tested on Debian and Ubuntu
+This simple script **free-mobile-mqtt** allows you to publish your Free Mobile meters (call, SMS, MMS and Data) on any MQTT broker.
+It allows to get almost real time values without any need to connect to your account.
+It has been tested on Debian and Ubuntu.
 
 This script needs :
   * git
@@ -27,4 +27,5 @@ topic/of/your/account {"roaming":{"Appel":{"Emis":"0s","Recu":"0s","Hors":"0.00â
 ```
 
 Here is what I get from openHab2 :
-![OpenHab](https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/free-mobile/openhab.png) 
+
+![OpenHab](https://github.com/NicolasBernaerts/debian-scripts/raw/master/free-mobile/openhab.png) 
