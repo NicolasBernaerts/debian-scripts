@@ -6,7 +6,6 @@ This simple script **free-mobile-mqtt** allows to do that :
   * it connects to Free Mobile using your credentials
   * it parses the page to retrieve important meter values (call, SMS, MMS and Data)
   * it publishes these values on a MQTT broker.
-It allows to get almost real time values without any need to connect to your account.
 
 It has been tested on Debian and Ubuntu.
 
