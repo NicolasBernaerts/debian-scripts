@@ -17,15 +17,18 @@
 #    08/08/2019, V1.8 - Add --file option (file holding text to display)
 #    23/09/2019, V1.9 - Add --quiet option, thanks to Alberto Panu
 #    06/02/2020, V2.0 - Add --disable_preview option, thanks to Alex P.
+#    30/01/2022, V2.1 - Add --code option and --protect
 # ---------------------------------------------------
 
 # initialise variables
 NOTIFY_TEXT=""
 DISPLAY_TEXT=""
+DISPLAY_CODE=""
 DISPLAY_PICT=""
 DISPLAY_ICON=""
 DISPLAY_MODE="markdown"
 DISABLE_PREVIEW="false"
+PROTECT="false"
 DISPLAY_SILENT="false"
 QUIET="false"
 
@@ -49,6 +52,7 @@ then
   echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
   echo "Main parameters are :"
   echo "  --text <text>       Text of the message (use - for piped text)"
+  echo "  --code <code>       Text of the message or file holding the code"
   echo "  --file <file>       File holding the text of the message"
   echo "  --photo <file>      Image to display"
   echo "  --document <file>   Document to transfer"
@@ -56,6 +60,7 @@ then
   echo "  --title <title>     Title of the message (if text message)"
   echo "  --html              Use HTML mode for text content (markdown by default)"
   echo "  --disable_preview   Don't create previews for links, image and/or document"
+  echo "  --protect           Protects the contents of the sent message from forwarding and saving"
   echo "  --silent            Send message in silent mode (no user notification on the client)"
   echo "  --quiet             Don't print message to stdout"
   echo "  --config <file>     use alternate config file, instead of default ${FILE_CONF}"
@@ -77,12 +82,14 @@ while test $# -gt 0
 do
   case "$1" in
     "--text") shift; DISPLAY_TEXT="$1"; shift; ;;
+    "--code") shift; DISPLAY_CODE="$1"; shift; ;;
     "--file") shift; TEXTFILE="$1"; shift; ;;
     "--photo") shift; PICTURE="$1"; shift; ;;
     "--document") shift; DOCUMENT="$1"; shift; ;;
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
     "--html") DISPLAY_MODE="html"; shift; ;;
     "--disable_preview") DISABLE_PREVIEW="true"; shift; ;;
+    "--protect") PROTECT="true"; shift; ;;
     "--silent") DISPLAY_SILENT="true"; shift; ;;
     "--quiet") QUIET="true"; shift; ;;
     "--config") shift; FILE_CONF="$1"; shift; ;;
@@ -142,11 +149,17 @@ fi
 # if text is a file, get its content
 [ -f "${TEXTFILE}" ] && DISPLAY_TEXT=$(cat "${TEXTFILE}")
 
+# if code is a file, get its content
+[ -f "${DISPLAY_CODE}" ] && DISPLAY_CODE="$(cat "${DISPLAY_CODE}")"
+
 # if text is to be read from pipe, get it
 [ ! -t 0 -a "${DISPLAY_TEXT}" = "-" ] && DISPLAY_TEXT=$(cat)
 
 # convert \n to LF
 DISPLAY_TEXT=$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')
+
+# convert \n to LF
+DISPLAY_CODE="$(echo "${DISPLAY_CODE}" | sed 's:\\n:\n:g')"
 
 # if icon defined, include ahead of notification
 [ "${DISPLAY_ICON}" != "" ] && NOTIFY_TEXT="${DISPLAY_ICON} "
@@ -162,6 +175,9 @@ fi
 # if text defined, replace \n by HTML line break
 [ "${DISPLAY_TEXT}" != "" ] && NOTIFY_TEXT="${NOTIFY_TEXT}${DISPLAY_TEXT}"
 
+# if code defined, replace \n by HTML line break
+[ "${DISPLAY_CODE}" != "" ] && NOTIFY_CODE="${NOTIFY_TEXT}${DISPLAY_CODE}"
+
 # -------------------------------------------------------
 #   Notification
 # -------------------------------------------------------
@@ -176,19 +192,25 @@ ARR_OPTIONS=( "--silent" "--insecure" )
 if [ "${PICTURE}" != "" ]
 then
   # display image
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto")
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form protect_content=${PROTECT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto")
 
 # if document defined, send it with icon and caption
 elif [ "${DOCUMENT}" != "" ]
 then
   # transfer document
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument")
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form protect_content=${PROTECT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument")
 
 # else, if text is defined, display it with icon and title
 elif [ "${NOTIFY_TEXT}" != "" ]
 then
   # display text message
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "disable_web_page_preview=${DISABLE_PREVIEW}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage")
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "protect_content=${PROTECT}" --data "disable_web_page_preview=${DISABLE_PREVIEW}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage")
+
+# else, if code is defined, display it with icon and title
+elif [ "${NOTIFY_CODE}" != "" ]
+then
+  # display text message
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "protect_content=${PROTECT}" --data "disable_web_page_preview=${DISABLE_PREVIEW}" --data "parse_mode=${DISPLAY_MODE}" --data "text=\`\`\` ${NOTIFY_CODE} \`\`\`" "https://api.telegram.org/bot${API_KEY}/sendMessage")
 
 #  else, nothing, error
 else
