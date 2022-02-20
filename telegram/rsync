@@ -1,0 +1,61 @@
+#!/bin/bash
+# ---------------------------------------------------
+#   RSync caller script
+#
+# Parameters :
+#  Same as RSync +
+#  --telegram <message>  : send an status message
+#
+# Revision history :
+#   20/02/2022, V1.0 - Creation by N. Bernaerts 
+# ---------------------------------------------------
+
+# -------------------------------------------------------
+#   Check tools availability
+# -------------------------------------------------------
+
+command -v /usr/bin/rsync >/dev/null 2>&1 || { echo "[Error] Please install rsync"; exit 1; }
+command -v telegram-notify >/dev/null 2>&1 || { echo "[Error] Please install telegram-notify"; exit 1; }
+
+# -------------------------------------------------------
+#   Loop to load arguments
+# -------------------------------------------------------
+
+# if no argument, display help
+if [ $# -eq 0 ] 
+then
+  echo "RSync launcher"
+  echo "Takes all rsync paramaters, plus"
+  echo "  --telegram <text>       Send Telegram notification with this text"
+  exit
+fi
+
+# loop to retrieve arguments
+while test $# -gt 0
+do
+  case "$1" in
+    "--telegram") shift; TELEGRAM="$1"; shift; ;;
+    *) ARR_PARAM=( "${ARR_PARAM[@]}" "$1" ); shift; ;;
+  esac
+done
+
+# run rsync
+echo "Running rsync ${ARR_PARAM[@]}"
+/usr/bin/rsync "${ARR_PARAM[@]}"
+RSYNC_CODE="$?"
+
+# send telegram notification
+if [ "${TELEGRAM}" ]
+then
+	# set success or failure status
+	[ ${RSYNC_CODE} -eq 0 ] && ARR_PARAM=( "--success" ) || ARR_PARAM=( "--error" )
+
+	# set parameters
+	ARR_PARAM=( "${ARR_PARAM[@]}" "--silent" "--quiet" "--title" "${TELEGRAM}" )
+
+	# send telegram notification
+	telegram-notify "${ARR_PARAM[@]}"
+fi
+
+# return rsync code
+exit ${RSYNC_CODE}
