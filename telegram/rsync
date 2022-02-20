@@ -1,10 +1,9 @@
 #!/bin/bash
 # ---------------------------------------------------
-#   RSync caller script
+#   RSync wrapper script
 #
-# Parameters :
-#  Same as RSync +
-#  --telegram <message>  : send an status message
+# Parameters :  Same as RSync and
+#  --telegram <title>  : send an telegram message after rsync
 #
 # Revision history :
 #   20/02/2022, V1.0 - Creation by N. Bernaerts 
@@ -24,9 +23,9 @@ command -v telegram-notify >/dev/null 2>&1 || { echo "[Error] Please install tel
 # if no argument, display help
 if [ $# -eq 0 ] 
 then
-  echo "RSync launcher"
-  echo "Takes all rsync paramaters, plus"
-  echo "  --telegram <text>       Send Telegram notification with this text"
+  echo "RSync wrapper to handle Telegram notifications"
+  echo "Takes all rsync paramaters and :"
+  echo "  --telegram <title>       Send Telegram notification with this title"
   exit
 fi
 
@@ -40,9 +39,9 @@ do
 done
 
 # run rsync
-echo "Running rsync ${ARR_PARAM[@]}"
+echo "Running : rsync ${ARR_PARAM[@]}"
 /usr/bin/rsync "${ARR_PARAM[@]}"
-RSYNC_CODE="$?"
+RSYNC_CODE=$?
 
 # send telegram notification
 if [ "${TELEGRAM}" ]
