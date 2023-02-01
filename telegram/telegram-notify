@@ -19,7 +19,8 @@
 #    06/02/2020, v2.0 - Add --disable_preview option, thanks to Alex P.
 #    30/01/2022, v2.1 - Add --code option and --protect
 #    03/05/2022, v2.2 - Bug fixes, thanks to Radius17
-#    01/02/2023, v2.3 - Fix for image and document sending, thanks to jacklul
+#    31/01/2023, v2.3 - Fix for image and document sending, thanks to jacklul
+#    01/02/2023, v2.4 - Add --debug and --position option, idea from z3r0l1nk
 # ---------------------------------------------------
 
 # initialise variables
@@ -54,11 +55,12 @@ then
   echo "Tool to send a message to a Telegram User or Channel."
   echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
   echo "Main parameters are :"
-  echo "  --text <text>       Text of the message (use - for piped text)"
-  echo "  --code <code>       Text of the message or file holding the code"
-  echo "  --file <file>       File holding the text of the message"
-  echo "  --photo <file>      Image to display"
-  echo "  --document <file>   Document to transfer"
+  echo "  --text <text>          Text of the message (use - for piped text)"
+  echo "  --code <code>          Text of the message or file holding the code"
+  echo "  --file <file>          File holding the text of the message"
+  echo "  --photo <file>         Image to display"
+  echo "  --document <file>      Document to transfer"
+  echo "  --position <lat,long>  GPS position"
   echo "Options are :"
   echo "  --title <title>     Title of the message (if text message)"
   echo "  --html              Use HTML mode for text content (markdown by default)"
@@ -75,6 +77,8 @@ then
   echo "  --error             Add an error icon"
   echo "  --question          Add a question mark icon"
   echo "  --icon <code>       Add an icon by UTF code (ex 1F355)"
+  echo "Other options are :"
+  echo "  --debug             Display debug info"
   echo "Here is an example of piped text :"
   echo "  echo 'text to be displayed' | telegram-notify --success --text -"
   exit
@@ -89,6 +93,7 @@ do
     "--file") shift; TEXTFILE="$1"; shift; ;;
     "--photo") shift; PICTURE="$1"; shift; ;;
     "--document") shift; DOCUMENT="$1"; shift; ;;
+    "--position") shift; POSITION="$1"; shift; ;;
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
     "--html") DISPLAY_MODE="html"; shift; ;;
     "--disable_preview") DISABLE_PREVIEW="true"; shift; ;;
@@ -103,6 +108,7 @@ do
     "--error") DISPLAY_ICON=$(echo -e "\U1F6A8"); shift; ;;
     "--question") DISPLAY_ICON=$(echo -e "\U2753"); shift; ;;
     "--icon") shift; DISPLAY_ICON=$(echo -e "\U$1"); shift; ;;
+    "--debug") DEBUG="ok"; shift; ;;
     *) shift; ;;
   esac
 done
@@ -204,6 +210,16 @@ then
   CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form protect_content=${PROTECT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form "parse_mode=${DISPLAY_MODE}" --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument")
 
 # else, if text is defined, display it with icon and title
+elif [ "${POSITION}" != "" ]
+then
+  # extract coordonates
+  LATITUDE=$(echo "${POSITION}" | cut -d',' -f1)
+  LONGITUDE=$(echo "${POSITION}" | cut -d',' -f2)
+
+  # transfer document
+  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form "latitude=${LATITUDE}" --form "longitude=${LONGITUDE}" "https://api.telegram.org/bot${API_KEY}/sendlocation")
+
+# else, if text is defined, display it with icon and title
 elif [ "${NOTIFY_TEXT}" != "" ]
 then
   # display text message
@@ -222,8 +238,8 @@ else
   exit 1
 fi
 
-# check curl request result
-echo ${CURL_RESULT} | grep '"ok":true' > /dev/null || { echo ${CURL_RESULT}; exit 1; }
+# if debug mode, display bot answer
+[ "${DEBUG}" = "ok" ] && echo ${CURL_RESULT} 
 
 # end
 exit 0
