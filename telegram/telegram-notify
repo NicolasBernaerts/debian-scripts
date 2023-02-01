@@ -5,20 +5,21 @@
 #  Depends on curl 
 #
 #  Revision history :
-#    10/01/2016, V1.0 - Creation by N. Bernaerts
-#    22/01/2016, V1.1 - Handle emoticons
-#    06/08/2016, V1.2 - Add API key and User ID parameters
+#    10/01/2016, v1.0 - Creation by N. Bernaerts
+#    22/01/2016, v1.1 - Handle emoticons
+#    06/08/2016, v1.2 - Add API key and User ID parameters
 #                       Remove dependency to PERL
-#    08/08/2016, V1.3 - Add --document, --html and --silent options
-#    10/11/2016, V1.4 - Add --icon option
-#    11/01/2018, V1.5 - Add possibility of piped text, idea from Yasir Atabani
-#    19/05/2018, V1.6 - Add socks5 proxy option, idea from RangerRU
-#    28/06/2018, V1.7 - Add --warning and --config options, idea from Markus Hof
-#    08/08/2019, V1.8 - Add --file option (file holding text to display)
-#    23/09/2019, V1.9 - Add --quiet option, thanks to Alberto Panu
-#    06/02/2020, V2.0 - Add --disable_preview option, thanks to Alex P.
-#    30/01/2022, V2.1 - Add --code option and --protect
-#    03/05/2022, V2.2 - Bug fixes, thanks to Radius17
+#    08/08/2016, v1.3 - Add --document, --html and --silent options
+#    10/11/2016, v1.4 - Add --icon option
+#    11/01/2018, v1.5 - Add possibility of piped text, idea from Yasir Atabani
+#    19/05/2018, v1.6 - Add socks5 proxy option, idea from RangerRU
+#    28/06/2018, v1.7 - Add --warning and --config options, idea from Markus Hof
+#    08/08/2019, v1.8 - Add --file option (file holding text to display)
+#    23/09/2019, v1.9 - Add --quiet option, thanks to Alberto Panu
+#    06/02/2020, v2.0 - Add --disable_preview option, thanks to Alex P.
+#    30/01/2022, v2.1 - Add --code option and --protect
+#    03/05/2022, v2.2 - Bug fixes, thanks to Radius17
+#    01/02/2023, v2.3 - Fix for image and document sending, thanks to jacklul
 # ---------------------------------------------------
 
 # initialise variables
