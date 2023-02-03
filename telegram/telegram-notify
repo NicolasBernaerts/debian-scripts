@@ -21,18 +21,17 @@
 #    03/05/2022, v2.2 - Bug fixes, thanks to Radius17
 #    31/01/2023, v2.3 - Fix for image and document sending, thanks to jacklul
 #    01/02/2023, v2.4 - Add --debug and --position option, idea from z3r0l1nk
+#    03/02/2023, v2.5 - Add --audio option and code rewrite
 # ---------------------------------------------------
 
 # initialise variables
-NOTIFY_TEXT=""
-DISPLAY_TEXT=""
-DISPLAY_CODE=""
-DISPLAY_PICT=""
-DISPLAY_ICON=""
-DISPLAY_MODE="markdown"
+TEXT=""
+ICON=""
+TYPE="text"
+MODE="markdown"
 DISABLE_PREVIEW="false"
 PROTECT="false"
-DISPLAY_SILENT="false"
+SILENT="false"
 QUIET="false"
 LINE_BREAK=$'\n'
 
@@ -56,11 +55,11 @@ then
   echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
   echo "Main parameters are :"
   echo "  --text <text>          Text of the message (use - for piped text)"
-  echo "  --code <code>          Text of the message or file holding the code"
   echo "  --file <file>          File holding the text of the message"
   echo "  --photo <file>         Image to display"
   echo "  --document <file>      Document to transfer"
   echo "  --position <lat,long>  GPS position"
+  echo "  --audio <file>         Audio file (converted to opus if needed)"
   echo "Options are :"
   echo "  --title <title>     Title of the message (if text message)"
   echo "  --html              Use HTML mode for text content (markdown by default)"
@@ -78,7 +77,7 @@ then
   echo "  --question          Add a question mark icon"
   echo "  --icon <code>       Add an icon by UTF code (ex 1F355)"
   echo "Other options are :"
-  echo "  --debug             Display debug info"
+  echo "  --debug             Display JSON answer for debug"
   echo "Here is an example of piped text :"
   echo "  echo 'text to be displayed' | telegram-notify --success --text -"
   exit
@@ -88,26 +87,26 @@ fi
 while test $# -gt 0
 do
   case "$1" in
-    "--text") shift; DISPLAY_TEXT="$1"; shift; ;;
-    "--code") shift; DISPLAY_CODE="$1"; shift; ;;
-    "--file") shift; TEXTFILE="$1"; shift; ;;
-    "--photo") shift; PICTURE="$1"; shift; ;;
-    "--document") shift; DOCUMENT="$1"; shift; ;;
-    "--position") shift; POSITION="$1"; shift; ;;
-    "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
-    "--html") DISPLAY_MODE="html"; shift; ;;
+    "--text") shift; TEXT="$1"; shift; ;;
+    "--file") shift; FILE="$1"; shift; ;;
+    "--photo") shift; TYPE="pict"; FILE="$1"; shift; ;;
+    "--document") shift; TYPE="doc"; FILE="$1"; shift; ;;
+    "--audio") shift; TYPE="audio"; FILE="$1"; shift; ;;
+    "--position") shift; TYPE="pos"; POSITION="$1"; shift; ;;
+    "--title") shift; TITLE="$1"; shift; ;;
+    "--html") MODE="html"; shift; ;;
     "--disable_preview") DISABLE_PREVIEW="true"; shift; ;;
     "--protect") PROTECT="true"; shift; ;;
-    "--silent") DISPLAY_SILENT="true"; shift; ;;
+    "--silent") SILENT="true"; shift; ;;
     "--quiet") QUIET="true"; shift; ;;
     "--config") shift; FILE_CONF="$1"; shift; ;;
     "--user") shift; USER_ID="$1"; shift; ;;
     "--key") shift; API_KEY="$1"; shift; ;;
-    "--success") DISPLAY_ICON=$(echo -e "\U2705"); shift; ;;
-    "--warning") DISPLAY_ICON=$(echo -e "\U26A0"); shift; ;;
-    "--error") DISPLAY_ICON=$(echo -e "\U1F6A8"); shift; ;;
-    "--question") DISPLAY_ICON=$(echo -e "\U2753"); shift; ;;
-    "--icon") shift; DISPLAY_ICON=$(echo -e "\U$1"); shift; ;;
+    "--success") ICON=$(echo -e "\U2705"); shift; ;;
+    "--warning") ICON=$(echo -e "\U26A0"); shift; ;;
+    "--error") ICON=$(echo -e "\U1F6A8"); shift; ;;
+    "--question") ICON=$(echo -e "\U2753"); shift; ;;
+    "--icon") shift; ICON=$(echo -e "\U$1"); shift; ;;
     "--debug") DEBUG="ok"; shift; ;;
     *) shift; ;;
   esac
@@ -138,58 +137,36 @@ fi
 [ "${API_KEY}" = "" ] && { echo "[Error] Please provide API key or set it in ${FILE_CONF}"; exit 1; }
 [ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
 
-# -------------------------------------------------------
-#   Check for file existence
-# -------------------------------------------------------
+# Check for file existence
+[ "${FILE}" != "" -a ! -f "${FILE}" ] && { echo "[error] File ${FILE} doesn't exist"; exit 1; }
 
-# if text file, check for text file
-[ "${TEXTFILE}" != "" -a ! -f "${TEXTFILE}" ] && { echo "[error] Text file ${TEXTFILE} doesn't exist"; exit 1; }
-
-# if picture, check for image file
-[ "${PICTURE}" != "" -a ! -f "${PICTURE}" ] && { echo "[error] Image file ${PICTURE} doesn't exist"; exit 1; }
-
-# if document, check for document file
-[ "${DOCUMENT}" != "" -a ! -f "${DOCUMENT}" ] && { echo "[error] Document file ${DOCUMENT} doesn't exist"; exit 1; }
+# generate temporary directory
+TMP_DIR=$(mktemp -t -d "telegram-XXXXXXXX")
+TMP_AUDIO="${TMP_DIR}/audio.ogg"
 
 # -------------------------------------------------------
-#   String preparation : space and line break
+#   Text : space, line break, title and icon
 # -------------------------------------------------------
 
 # if text is a file, get its content
-[ -f "${TEXTFILE}" ] && DISPLAY_TEXT=$(cat "${TEXTFILE}")
-
-# if code is a file, get its content
-[ -f "${DISPLAY_CODE}" ] && DISPLAY_CODE="$(cat "${DISPLAY_CODE}")"
+[ "${TYPE}" = "text" -a "${FILE}" != "" ] && TEXT=$(cat "${FILE}")
 
 # if text is to be read from pipe, get it
-[ ! -t 0 -a "${DISPLAY_TEXT}" = "-" ] && DISPLAY_TEXT=$(cat)
+[ ! -t 0 -a "${TEXT}" = "-" ] && TEXT=$(cat)
 
 # convert \n to LF
-DISPLAY_TEXT=$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')
-
-# convert \n to LF
-DISPLAY_CODE="$(echo "${DISPLAY_CODE}" | sed 's:\\n:\n:g')"
-
-# if icon defined, include ahead of notification
-[ "${DISPLAY_ICON}" != "" ] && NOTIFY_TEXT="${DISPLAY_ICON} "
+TEXT=$(echo "${TEXT}" | sed 's:\\n:\n:g')
 
 # if title defined, add it with line break
-if [ "${DISPLAY_TITLE}" != "" ]
-then
-	# convert title according to Markdown or HTML
-	[ "${DISPLAY_MODE}" = "html" ] && NOTIFY_TEXT="${NOTIFY_TEXT}<b>${DISPLAY_TITLE}</b>${LINE_BREAK}${LINE_BREAK}" \
-				       || NOTIFY_TEXT="${NOTIFY_TEXT}*${DISPLAY_TITLE}*${LINE_BREAK}${LINE_BREAK}"
-fi
+[ "${TITLE}" != "" -a "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
+[ "${TITLE}" != "" -a "${MODE}" = "markdown" ] && TEXT="*${TITLE}*${LINE_BREAK}${LINE_BREAK}${TEXT}"
 
-# if text defined, replace \n by HTML line break
-[ "${DISPLAY_TEXT}" != "" ] && NOTIFY_TEXT="${NOTIFY_TEXT}${DISPLAY_TEXT}"
+# if icon defined, include ahead of notification
+[ "${ICON}" != "" ] && TEXT="${ICON} ${TEXT}"
 
-# if code defined, replace \n by HTML line break
-[ "${DISPLAY_CODE}" != "" ] && NOTIFY_CODE="${NOTIFY_TEXT}${DISPLAY_CODE}"
-
-# -------------------------------------------------------
+# -----------------
 #   Notification
-# -------------------------------------------------------
+# -----------------
 
 # default option
 ARR_OPTIONS=( "--silent" "--insecure" )
@@ -197,49 +174,90 @@ ARR_OPTIONS=( "--silent" "--insecure" )
 # if needed, socks5 option
 [ "${SOCKS_PROXY}" != "" ] && ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--socks5-hostname" "${SOCKS_PROXY}" )
 
-# if photo defined, display it with icon and caption
-if [ "${PICTURE}" != "" ]
-then
-  # display image
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form protect_content=${PROTECT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form "parse_mode=${DISPLAY_MODE}" --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto")
+case "${TYPE}" in
 
-# if document defined, send it with icon and caption
-elif [ "${DOCUMENT}" != "" ]
-then
-  # transfer document
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form protect_content=${PROTECT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form "parse_mode=${DISPLAY_MODE}" --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument")
+  # text
+  "text") 
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--data" "chat_id=${USER_ID}" "--data" "disable_notification=${SILENT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--data" "protect_content=${PROTECT}" "--data" "disable_web_page_preview=${DISABLE_PREVIEW}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--data" "parse_mode=${MODE}" "--data" "text=${TEXT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "https://api.telegram.org/bot${API_KEY}/sendMessage" )
+    ;;
+    
+  # image
+  "pict")
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "chat_id=${USER_ID}" "--form" "disable_notification=${SILENT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "protect_content=${PROTECT}" "--form" "disable_web_page_preview=${DISABLE_PREVIEW}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "parse_mode=${MODE}" "--form" "photo=@${FILE}" "--form" "caption=${TEXT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "https://api.telegram.org/bot${API_KEY}/sendPhoto" )
+    ;;
 
-# else, if text is defined, display it with icon and title
-elif [ "${POSITION}" != "" ]
-then
-  # extract coordonates
-  LATITUDE=$(echo "${POSITION}" | cut -d',' -f1)
-  LONGITUDE=$(echo "${POSITION}" | cut -d',' -f2)
+  # document
+  "doc") 
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "chat_id=${USER_ID}" "--form" "disable_notification=${SILENT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "protect_content=${PROTECT}" "--form" "disable_web_page_preview=${DISABLE_PREVIEW}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "parse_mode=${MODE}" "--form" "document=@${FILE}" "--form" "caption=${TEXT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "https://api.telegram.org/bot${API_KEY}/sendDocument" )
+    ;;
 
-  # transfer document
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form disable_web_page_preview=${DISABLE_PREVIEW} --form "latitude=${LATITUDE}" --form "longitude=${LONGITUDE}" "https://api.telegram.org/bot${API_KEY}/sendlocation")
+  # position
+  "pos") 
+    # extract coordonates
+    LATITUDE=$(echo "${POSITION}" | cut -d',' -f1)
+    LONGITUDE=$(echo "${POSITION}" | cut -d',' -f2)
 
-# else, if text is defined, display it with icon and title
-elif [ "${NOTIFY_TEXT}" != "" ]
-then
-  # display text message
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "protect_content=${PROTECT}" --data "disable_web_page_preview=${DISABLE_PREVIEW}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage")
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "chat_id=${USER_ID}" "--form" "disable_notification=${SILENT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "parse_mode=${MODE}" "--form" "caption=${TEXT}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "latitude=${LATITUDE}" "--form" "longitude=${LONGITUDE}" )
+    ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "https://api.telegram.org/bot${API_KEY}/sendLocation" )
+    ;;
 
-# else, if code is defined, display it with icon and title
-elif [ "${NOTIFY_CODE}" != "" ]
+  # audio
+  "audio") 
+    # if needed, convert audio file
+    IS_OPUS=$(file "${FILE}" | grep "Opus audio")
+    command -v ffmpeg >/dev/null 2>&1 && IS_FFMPEG="ok"
+
+    [ "${IS_OPUS}" != "" ] && TMP_AUDIO="${FILE}"
+    [ "${IS_OPUS}" = "" -a "${IS_FFMPEG}" = "ok" ] && ffmpeg -i "${FILE}" -loglevel quiet -c libopus -ab 64k "${TMP_AUDIO}"
+
+    # if proper audio file
+    if [ -f "${TMP_AUDIO}" ]
+    then
+      ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "chat_id=${USER_ID}" "--form" "disable_notification=${SILENT}" )
+      ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--form" "parse_mode=${MODE}" "--form" "voice=@${TMP_AUDIO}" "--form" "caption=${TEXT}" )
+      ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "https://api.telegram.org/bot${API_KEY}/sendVoice" )
+    else
+      ARR_OPTIONS=( )
+      [ "${QUIET}" = "false" ] && echo "[Error] FFmpeg absent, Opus conversion impossible"
+    fi
+    ;;
+
+  *) 
+    ARR_OPTIONS=( )
+    ;;
+esac
+
+# if there is a message to send
+if [ ${#ARR_OPTIONS[@]} -gt 0 ]
 then
-  # display text message
-  CURL_RESULT=$(curl "${ARR_OPTIONS[@]}" --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "protect_content=${PROTECT}" --data "disable_web_page_preview=${DISABLE_PREVIEW}" --data "parse_mode=${DISPLAY_MODE}" --data "text=\`\`\` ${NOTIFY_CODE} \`\`\`" "https://api.telegram.org/bot${API_KEY}/sendMessage")
+  # send message
+  RESULT=$(curl "${ARR_OPTIONS[@]}")
+
+  # if debug mode, display bot answer
+  if [ "${DEBUG}" = "ok" ]
+  then
+    echo "option : ${ARR_OPTIONS[@]}"
+    echo "answer : ${RESULT}" 
+  fi
 
 #  else, nothing, error
 else
   # display error message unless --quiet parameter is used
   [ "${QUIET}" = "false" ] && echo "[Error] Nothing to notify"
-  exit 1
+  
 fi
 
-# if debug mode, display bot answer
-[ "${DEBUG}" = "ok" ] && echo ${CURL_RESULT} 
+# remove temporary directory
+rm -r "${TMP_DIR}"
 
-# end
-exit 0
