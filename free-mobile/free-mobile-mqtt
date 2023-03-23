@@ -45,16 +45,6 @@ command -v jq >/dev/null 2>&1 || { echo "[Error] Please install jq"; exit 1; }
 command -v pup >/dev/null 2>&1 || { echo "[Error] Please install pup"; exit 1; }
 command -v mosquitto_pub >/dev/null 2>&1 || { echo "[Error] Please install mosquitto_pub (mosquitto-clients)"; exit 1; }
 
-# if no argument, display help
-if [ $# -eq 0 ] 
-then
-  echo "Tool to publish free mobile account data over MQTT"
-  echo "Parameters are :"
-  echo "  --html            Print HTML page code"
-  echo "  --json            Print resulting JSON"
-  exit
-fi
-
 # loop to retrieve arguments
 while test $# -gt 0
 do
