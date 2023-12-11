@@ -1,0 +1,36 @@
+#!/bin/bash
+# ---------------------------------------------------
+#  Wireguard watchdog
+#
+#  Check for latest wireguard handshake
+#  If more than 4 minutes, there is a problem, restart the service
+#
+#  Should be run by cron as root :
+#    * * * * * /usr/local/bin/wireguard-watchdog
+#
+#  Revision history :
+#    10/12/2023, v1.0 - Creation by N. Bernaerts
+# ---------------------------------------------------
+
+# check telegram notification
+command -v telegram-notify >/dev/null 2>&1 && TELEGRAM="ok"
+
+# check latest handshake
+HANDSHAKE_MN=$(wg | grep "latest handshake" | grep "minute" | xargs | cut -d' ' -f3)
+[ "${HANDSHAKE_MN}" = "" ] && HANDSHAKE_MN=0
+
+# display handshake delay
+echo "${HANDSHAKE_MN} mn ago" >&2
+
+# if more than 4 mn, there is a problem
+if [ ${HANDSHAKE_MN} -gt 4 ]
+then
+	# restart service to reconnect
+	systemctl restart wg-quick@wg0
+
+	# log
+	logger -i -t "wireguard-watchdog" -p user.notice "Wireguard restarted by watchdog"
+	
+	# if available, send telegram notification
+	[ "${TELEGRAM}" = "ok" ] && telegram-notify "--error" "--silent" "--quiet" "--title" "${HOSTNAME}" --text "Wireguard restarted by watchdog"
+fi
