@@ -35,5 +35,5 @@ then
 	logger -i -t "wireguard-watchdog" -p user.notice "Wireguard restarted by watchdog"
 	
 	# if available, send telegram notification
-	[ "${TELEGRAM}" = "ok" ] && telegram-notify "--error" "--silent" "--quiet" "--title" "${HOSTNAME}" --text "Wireguard restarted by watchdog"
+	[ "${TELEGRAM}" = "ok" ] && telegram-notify "--warning" "--silent" "--quiet" "--title" "${HOSTNAME}" --text "Wireguard restarted by watchdog"
 fi
