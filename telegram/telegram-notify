@@ -172,7 +172,7 @@ fi
 [ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
 
 # Check for file existence
-[ "${FILE}" != "" -a ! -f "${FILE}" ] && { echo "[error] File ${FILE} doesn't exist"; exit 1; }
+[ "${FILE}" != "" ] && [ ! -f "${FILE}" ] && { echo "[error] File ${FILE} doesn't exist"; exit 1; }
 
 # generate temporary directory
 TMP_DIR=$(mktemp -t -d "telegram-XXXXXXXX")
@@ -183,10 +183,10 @@ TMP_AUDIO="${TMP_DIR}/audio.ogg"
 # -------------------------------------------------------
 
 # if text is a file, get its content
-[ "${TYPE}" = "text" -a "${FILE}" != "" ] && TEXT=$(cat "${FILE}")
+[ "${TYPE}" = "text" ] && [ "${FILE}" != "" ] && TEXT=$(cat "${FILE}")
 
 # if text is to be read from pipe, get it
-[ ! -t 0 -a "${TEXT}" = "-" ] && TEXT=$(cat)
+[ ! -t 0 ] && [ "${TEXT}" = "-" ] && TEXT=$(cat)
 
 # convert \n to LF
 TEXT="${TEXT//$"\n"/${LINE_BREAK}}"
@@ -196,8 +196,8 @@ TEXT="${TEXT#"${TEXT%%[![:space:]]*}"}"
 TEXT="${TEXT%"${TEXT##*[![:space:]]}"}"
 
 # if title defined, add it with line break
-[ "${TITLE}" != "" -a "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
-[ "${TITLE}" != "" -a "${MODE}" = "markdown" ] && TEXT="*${TITLE}*${LINE_BREAK}${LINE_BREAK}${TEXT}"
+[ "${TITLE}" != "" ] && [ "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
+[ "${TITLE}" != "" ] && [ "${MODE}" = "markdown" ] && TEXT="*${TITLE}*${LINE_BREAK}${LINE_BREAK}${TEXT}"
 
 # if icon defined, include ahead of notification
 [ "${ICON}" != "" ] && TEXT="${ICON} ${TEXT}"
@@ -257,7 +257,7 @@ case "${TYPE}" in
     command -v ffmpeg >/dev/null 2>&1 && IS_FFMPEG="ok"
 
     [ "${IS_OPUS}" != "" ] && TMP_AUDIO="${FILE}"
-    [ "${IS_OPUS}" = "" -a "${IS_FFMPEG}" = "ok" ] && ffmpeg -i "${FILE}" -loglevel quiet -c libopus -ab 64k "${TMP_AUDIO}"
+    [ "${IS_OPUS}" = "" ] && [ "${IS_FFMPEG}" = "ok" ] && ffmpeg -i "${FILE}" -loglevel quiet -c libopus -ab 64k "${TMP_AUDIO}"
 
     # if proper audio file
     if [ -f "${TMP_AUDIO}" ]
