@@ -189,7 +189,11 @@ TMP_AUDIO="${TMP_DIR}/audio.ogg"
 [ ! -t 0 -a "${TEXT}" = "-" ] && TEXT=$(cat)
 
 # convert \n to LF
-TEXT=$(echo "${TEXT}" | sed 's:\\n:\n:g')
+TEXT="${TEXT//$"\n"/${LINE_BREAK}}"
+# remove leading whitespace characters
+TEXT="${TEXT#"${TEXT%%[![:space:]]*}"}"
+# remove trailing whitespace characters
+TEXT="${TEXT%"${TEXT##*[![:space:]]}"}"
 
 # if title defined, add it with line break
 [ "${TITLE}" != "" -a "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
