@@ -45,6 +45,40 @@ FILE_CONF="/etc/telegram-notify.conf"
 command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1; }
 
 # -------------------------------------------------------
+#   Unicode icons
+# -------------------------------------------------------
+
+get_utf_locale() {
+    # and use first one having UTF-8, or current one as fallback
+    command -v locale >/dev/null 2>&1 || { [ "${QUIET}" = "false" ] && echo "[Error] Please install locale"; return 1; }
+
+    locale -a | while read -er line; do
+        local _lang=${line,,}
+        local _lc_lang=${_lang,,}
+        if [ "${_lc_lang}" != "${_lc_lang/utf/}" ]; then
+          printf "%s" "$_lang"
+          exit 9
+        fi
+    done
+    [ "$?" -eq 9 ] && exit 0
+    printf "%s" "$LANG"
+    return 1
+}
+
+get_unicode_string() {
+    # support unicode input even if current locale has no UTF-8
+    local _lang=$LANG;
+    local _lc_lang=${LANG,,}
+    if [ "${_lc_lang}" == "${_lc_lang/utf/}" ]; then # checking for lower case utf
+      # currently no UTF-8 support, checking available locales for UTF-8 support
+      _lang=$(get_utf_locale)
+    fi
+    command -v printf >/dev/null 2>&1 && LANG=$_lang printf "%b\n" "$1" && return 1;
+    LANG=$_lang echo -e "$1" && return 0
+    return 1
+}
+
+# -------------------------------------------------------
 #   Loop to load arguments
 # -------------------------------------------------------
 
@@ -102,11 +136,11 @@ do
     "--config") shift; FILE_CONF="$1"; shift; ;;
     "--user") shift; USER_ID="$1"; shift; ;;
     "--key") shift; API_KEY="$1"; shift; ;;
-    "--success") ICON=$(echo -e "\U2705"); shift; ;;
-    "--warning") ICON=$(echo -e "\U26A0"); shift; ;;
-    "--error") ICON=$(echo -e "\U1F6A8"); shift; ;;
-    "--question") ICON=$(echo -e "\U2753"); shift; ;;
-    "--icon") shift; ICON=$(echo -e "\U$1"); shift; ;;
+    "--success") ICON=$(get_unicode_string "\U2705"); shift; ;;
+    "--warning") ICON=$(get_unicode_string "\U26A0"); shift; ;;
+    "--error") ICON=$(get_unicode_string "\U1F6A8"); shift; ;;
+    "--question") ICON=$(get_unicode_string "\U2753"); shift; ;;
+    "--icon") shift; ICON=$(get_unicode_string "\U$1"); shift; ;;
     "--debug") DEBUG="ok"; shift; ;;
     *) shift; ;;
   esac
