@@ -25,6 +25,9 @@
 # ---------------------------------------------------
 
 # initialise variables
+API_KEY=""
+USER_ID=""
+SOCKS_PROXY=""
 DEBUG=""
 DEBUG_KEY=""
 TEXT=""
@@ -84,6 +87,8 @@ get_unicode_string() {
 #   Load config
 # -------------------------------------------------------
 
+debug() { printf "[Debug] %s\n" "$@" 1>&2; }
+
 trim() {
   # remove leading whitespace characters
   local _result=$1
@@ -97,35 +102,41 @@ trim() {
 read_config() {
   # read config file removing comments
   [ -f "${FILE_CONF}" ] || return 1
-  local _config=$(grep -oE "^[^#]*" "${FILE_CONF}") # read up to first '#' in line
+  local _config
+  _config=$(grep -oE "^[^#]*" "${FILE_CONF}") # read up to first '#' in line
 
   echo "${_config}" | while read -er _line; do # split on new line
-    echo "$_line" | while IFS='=' read -a _KEY_VALUE; do # split on "="
-      local _key=$(trim "${_KEY_VALUE[0]}")
-      local _value=$(trim "${_KEY_VALUE[1]}")
+    echo "$_line" | while IFS='=' read -ra _KEY_VALUE; do # split on "="
+      local _key
+      local _value
+      _key=$(trim "${_KEY_VALUE[0]}")
+      _value=$(trim "${_KEY_VALUE[1]}")
 
       # normalize key
       _key=${_key//-/_}
       _key=${_key^^} # upper case
 
-      [ "$_key" = "API_KEY" ]     && API_KEY=$_value
-      [ "$_key" = "USER_ID" ]     && USER_ID=$_value
-      [ "$_key" = "SOCKS_PROXY" ] && SOCKS_PROXY=$_value
-
-      if [ "${DEBUG}" = "ok" ]; then
-        if [ "$_key" = "API_KEY" ]; then # hide API key in debug output
-          [ "$_value" = "" ] && echo "[Warning] Config file: Key='${_key}'; Value=###missing###"
-          if [ ! "$_value" = "" ]; then
-            [ "$DEBUG_KEY" != "ok" ] && echo "[Info]    Config file: Key='${_key}'; Value=***** (show with --debug_key)"
-            [ "$DEBUG_KEY" =  "ok" ] && echo "[Info]    Config file: Key='${_key}'; Value='${_value}'"
+      if [ "$_key" = "$1" ]; then
+        if [ "${DEBUG}" = "ok" ]; then
+          if [ "$_key" = "API_KEY" ]; then # hide API key in debug output
+            [ "$_value" = "" ] && debug "Config : Key='${_key}'; Value=###missing###"
+            if [ ! "$_value" = "" ]; then
+              [ "$DEBUG_KEY" != "ok" ] && debug "Config : Key='${_key}'; Value=***** (show with --debug_key)"
+              [ "$DEBUG_KEY" =  "ok" ] && debug "Config : Key='${_key}'; Value='${_value}'"
+            fi
+          else
+            debug "Config : Key='${_key}'; Value='${_value}'"
           fi
-        else
-          echo "[Info]    Config file: Key='${_key}'; Value='${_value}'"
         fi
+
+        printf "%s" "$_value"
+        exit 9
       fi
     done
+    [ "$?" = 9 ] && exit 9
   done
-  return 0
+  [ "$?" = 9 ] && return 0
+  return 1
 }
 
 # -------------------------------------------------------
@@ -208,7 +219,10 @@ then
 	# display used config file unless --quiet parameter is used
 	[ "${QUIET}" = "false" ] && echo "[Info] Using configuration file ${FILE_CONF}"
 
-  read_config # use defaults from config
+  # use defaults from config
+  API_KEY=$(read_config "API_KEY")
+  USER_ID=$(read_config "USER_ID")
+  SOCKS_PROXY=$(read_config "SOCKS_PROXY")
 else
 	# display warning unless --quiet parameter is used
 	[ "${QUIET}" = "false" ] && echo "[Warning] Configuration file missing ${FILE_CONF}"
@@ -241,10 +255,8 @@ TMP_AUDIO="${TMP_DIR}/audio.ogg"
 
 # convert \n to LF
 TEXT="${TEXT//$"\n"/${LINE_BREAK}}"
-# remove leading whitespace characters
-TEXT="${TEXT#"${TEXT%%[![:space:]]*}"}"
-# remove trailing whitespace characters
-TEXT="${TEXT%"${TEXT##*[![:space:]]}"}"
+# remove leading and whitespace characters
+TEXT=$(trim "$TEXT")
 
 # if title defined, add it with line break
 [ "${TITLE}" != "" ] && [ "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
