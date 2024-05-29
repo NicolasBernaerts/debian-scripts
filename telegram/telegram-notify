@@ -259,8 +259,14 @@ TEXT="${TEXT//$"\n"/${LINE_BREAK}}"
 TEXT=$(trim "$TEXT")
 
 # if title defined, add it with line break
-[ "${TITLE}" != "" ] && [ "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
-[ "${TITLE}" != "" ] && [ "${MODE}" = "markdown" ] && TEXT="*${TITLE}*${LINE_BREAK}${LINE_BREAK}${TEXT}"
+if [ "${TITLE}" != "" ]; then
+  # convert \n to LF and trim
+  TITLE="${TITLE//$"\n"/${LINE_BREAK}}"
+  TITLE=$(trim "$TITLE")
+
+  [ "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
+  [ "${MODE}" = "markdown" ] && TEXT="*${TITLE}*${LINE_BREAK}${LINE_BREAK}${TEXT}"
+fi
 
 # if icon defined, include ahead of notification
 [ "${ICON}" != "" ] && TEXT="${ICON} ${TEXT}"
