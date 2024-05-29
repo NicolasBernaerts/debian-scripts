@@ -281,8 +281,8 @@ then
   # if debug mode, display bot answer
   if [ "${DEBUG}" = "ok" ]
   then
-    echo "option : ${ARR_OPTIONS[@]}"
-    echo "answer : ${RESULT}" 
+    echo "option : " "${ARR_OPTIONS[@]}"
+    echo "answer : " "${RESULT}"
   fi
 
 #  else, nothing, error
