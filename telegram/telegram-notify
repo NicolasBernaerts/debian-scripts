@@ -93,7 +93,7 @@ command -v curl >/dev/null 2>&1 || { alert "Please install 'curl'"; exit 1; }
 
 get_utf_locale() {
     # and use first one having UTF-8, or current one as fallback
-    command -v locale >/dev/null 2>&1 || { error "Please install 'locale'"; return 1; }
+    command -v locale >/dev/null 2>&1 || { error "Please install 'locales'"; return 1; }
 
     locale -a | while read -er line; do
         local _lang=${line,,}
