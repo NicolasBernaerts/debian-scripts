@@ -230,8 +230,9 @@ check_telegram_response() {
         _code=$(read_from_json "$_json" "error_code")
         _msg=$(read_from_json "$_json" "description")
 
-        printf "%s (code: %s)" "$_msg" "$_code" && return 0
+        printf "%s (code: %s)" "$_msg" "$_code" && return 1
       fi
+      return 0
     fi
     return 1
 }
