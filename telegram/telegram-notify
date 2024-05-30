@@ -25,14 +25,18 @@
 # ---------------------------------------------------
 
 # initialise variables
-API_KEY=""
-USER_ID=""
+export API_KEY=""
+export USER_ID=""
 SOCKS_PROXY=""
-DEBUG=""
-DEBUG_KEY=""
-TEXT=""
-ICON=""
-TYPE="text"
+export RC=1
+export DEBUG="false"
+DEBUG_KEY="false"
+VERBOSE="false"
+export TEXT=""
+export FILE=""
+export ICON=""
+export TYPE="text"
+export ARR_OPTIONS
 MODE="markdown"
 DISABLE_PREVIEW="false"
 PROTECT="false"
@@ -44,10 +48,44 @@ LINE_BREAK=$'\n'
 FILE_CONF="/etc/telegram-notify.conf"
 
 # -------------------------------------------------------
+#   Output and global functions
+# -------------------------------------------------------
+
+print_multiline() {
+  local _line
+  local _target=$1; shift
+  local _level=$1; shift
+
+  [ "$_target" -gt 0 ] && [ "$_target" -lt 3 ] || _target=2
+  printf "%s %s\n" "$_level" "$1" 1>&"$_target"; shift
+  for _line in "${@:1}"; do
+    printf "%s +               %s\n" "$_level" "$_line" 1>&"$_target";
+  done
+}
+
+verbose() { [ "${VERBOSE}" = "true"  ] && print_multiline 2 "[Verbose]" "$@"; }
+debug()   { [ "${DEBUG}"   = "true"  ] && print_multiline 2 "[Debug]  " "$@"; }
+info()    { [ "${QUIET}"   = "false" ] && print_multiline 1 "[Info]   " "$@"; }
+warning() { [ "${QUIET}"   = "false" ] && print_multiline 2 "[Warning]" "$@"; }
+error()   { [ "${QUIET}"   = "false" ] && print_multiline 2 "[Error]  " "$@"; }
+alert()   {                               print_multiline 2 "[Alert]  " "$@"; } # never suppress alerts
+
+trim() {
+  # remove leading whitespace characters
+  local _result=$1
+  _result="${_result#"${_result%%[![:space:]]*}"}"
+  # remove trailing whitespace characters
+  _result="${_result%"${_result##*[![:space:]]}"}"
+  printf "%s" "$_result"
+  return 0
+}
+
+
+# -------------------------------------------------------
 #   Check tools availability
 # -------------------------------------------------------
 
-command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1; }
+command -v curl >/dev/null 2>&1 || { alert "Please install 'curl'"; exit 1; }
 
 # -------------------------------------------------------
 #   Unicode icons
@@ -55,7 +93,7 @@ command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1;
 
 get_utf_locale() {
     # and use first one having UTF-8, or current one as fallback
-    command -v locale >/dev/null 2>&1 || { [ "${QUIET}" = "false" ] && echo "[Error] Please install locale"; return 1; }
+    command -v locale >/dev/null 2>&1 || { error "Please install 'locale'"; return 1; }
 
     locale -a | while read -er line; do
         local _lang=${line,,}
@@ -87,18 +125,6 @@ get_unicode_string() {
 #   Load config
 # -------------------------------------------------------
 
-debug() { printf "[Debug] %s\n" "$@" 1>&2; }
-
-trim() {
-  # remove leading whitespace characters
-  local _result=$1
-  _result="${_result#"${_result%%[![:space:]]*}"}"
-  # remove trailing whitespace characters
-  _result="${_result%"${_result##*[![:space:]]}"}"
-  printf "%s" "$_result"
-  return 0
-}
-
 read_config() {
   # read config file removing comments
   [ -f "${FILE_CONF}" ] || return 1
@@ -117,15 +143,15 @@ read_config() {
       _key=${_key^^} # upper case
 
       if [ "$_key" = "$1" ]; then
-        if [ "${DEBUG}" = "ok" ]; then
+        if [ "${DEBUG}" = "true" ]; then
           if [ "$_key" = "API_KEY" ]; then # hide API key in debug output
-            [ "$_value" = "" ] && debug "Config : Key='${_key}'; Value=###missing###"
+            [ "$_value" = "" ] && debug "Config        : Key='${_key}'; Value=###missing###"
             if [ ! "$_value" = "" ]; then
-              [ "$DEBUG_KEY" != "ok" ] && debug "Config : Key='${_key}'; Value=***** (show with --debug_key)"
-              [ "$DEBUG_KEY" =  "ok" ] && debug "Config : Key='${_key}'; Value='${_value}'"
+              [ "$DEBUG_KEY" != "true" ] && debug "Config        : Key='${_key}'; Value=***** (show with --debug_key)"
+              [ "$DEBUG_KEY" =  "true" ] && debug "Config        : Key='${_key}'; Value='${_value}'"
             fi
           else
-            debug "Config : Key='${_key}'; Value='${_value}'"
+            debug "Config        : Key='${_key}'; Value='${_value}'"
           fi
         fi
 
@@ -137,6 +163,77 @@ read_config() {
   done
   [ "$?" = 9 ] && return 0
   return 1
+}
+
+# -------------------------------------------------------
+#   Checking result of Telegram API call
+# -------------------------------------------------------
+
+read_from_json() {
+    # jq fallback: quick'n'dirty and not so save
+    verbose "Get value for : $2"
+    verbose "JSON          : $1"
+
+    echo "$1" | while IFS=',' read -ra _LINE; do # split by ','
+      verbose "Lines         : " "${_LINE[@]}"
+
+      for _segment in "${_LINE[@]}"; do
+        verbose "Segment       : ${_segment}"
+
+        echo "$_segment" | while IFS=':' read -ra _KEY_VALUE; do # split by ':'
+          verbose "Key/Value     : " "${_KEY_VALUE[@]}"
+
+          local _key="${_KEY_VALUE[0]}"
+          local _value
+          # remove quotes from key
+          _key=${_key//\"/}
+          if [ "${#_KEY_VALUE[@]}" -gt 2 ]; then
+            _value="${_KEY_VALUE[1]}:${_KEY_VALUE[*]:2}" # all values if value contains ':'; No loop rejoin only first
+          else
+            _value="${_KEY_VALUE[1]}"
+          fi
+
+          [ "$_key" = "$2" ] && printf "%s" "$_value" && exit 9
+        done
+        [ "$?" = 9 ] && exit 9
+      done
+      [ "$?" = 9 ] && exit 9
+    done
+    [ "$?" = 9 ] && return 0
+    return 1
+}
+
+check_telegram_response() {
+    local _jq_mode=0
+    command -v jq_ >/dev/null 2>&1 && _jq_mode=1
+    if [ $_jq_mode = 1 ]; then # use jq if available
+      debug "Parsing JSON using 'jq'..."
+      if [ "$(echo "$1" | jq '.ok')" = 'false' ]; then
+        printf "%s (code: %s)" "$(echo "$1" | jq '.description')" "$(echo "$1" | jq '.error_code')"  && return 1
+      fi
+      debug "Telegram API call with status 'ok'"
+      return 0
+    else
+      warning "Using insecure JSON parser, please install 'jq'"
+      local _json=$1
+      # remove json wrapper
+      _json=${_json//\{/}
+      _json=${_json//\}/}
+
+      local _rc=""
+      _rc=$(read_from_json "$_json" "ok")
+
+      if [ "$_rc" = 'false' ]; then
+        # get error message and code for error message
+        local _code=""
+        local _msg=""
+        _code=$(read_from_json "$_json" "error_code")
+        _msg=$(read_from_json "$_json" "description")
+
+        printf "%s (code: %s)" "$_msg" "$_code" && return 0
+      fi
+    fi
+    return 1
 }
 
 # -------------------------------------------------------
@@ -170,10 +267,14 @@ then
   echo "  --warning           Add a warning icon"
   echo "  --error             Add an error icon"
   echo "  --question          Add a question mark icon"
+  echo "  --exclamation       Add a red exclamation mark icon"
+  echo "  --bug               Add a bug icon"
+  echo "  --beetle            Add a beetle icon"
   echo "  --icon <code>       Add an icon by UTF code (ex 1F355)"
   echo "Other options are :"
   echo "  --debug             Display config file and JSON answer for debug"
   echo "  --debug_key         Display config file data with API key for debug"
+  echo "  --verbose           Display more details than --debug"
   echo "Here is an example of piped text :"
   echo "  echo 'text to be displayed' | telegram-notify --success --text -"
   exit
@@ -202,12 +303,17 @@ do
     "--warning") ICON=$(get_unicode_string "\U26A0"); shift; ;;
     "--error") ICON=$(get_unicode_string "\U1F6A8"); shift; ;;
     "--question") ICON=$(get_unicode_string "\U2753"); shift; ;;
+    "--exclamation") ICON=$(get_unicode_string "\U2757"); shift; ;;
+    "--bug") ICON=$(get_unicode_string "\U1F41B"); shift; ;;
+    "--beetle") ICON=$(get_unicode_string "\U1F41E"); shift; ;;
     "--icon") shift; ICON=$(get_unicode_string "\U$1"); shift; ;;
-    "--debug") DEBUG="ok"; shift; ;;
-    "--debug_key") DEBUG="ok"; DEBUG_KEY="ok"; shift; ;;
+    "--debug") DEBUG="true"; shift; ;;
+    "--debug_key") DEBUG="true"; DEBUG_KEY="true"; shift; ;;
+    "--verbose") DEBUG="true"; VERBOSE="true"; shift; ;;
     *) shift; ;;
   esac
 done
+[ "$VERBOSE" = "true" ] && QUIET="false"
 
 # -------------------------------------------------------
 #   Read configuration
@@ -216,16 +322,15 @@ done
 # if configuration file is present
 if [ -f "${FILE_CONF}" ]
 then
-	# display used config file unless --quiet parameter is used
-	[ "${QUIET}" = "false" ] && echo "[Info] Using configuration file ${FILE_CONF}"
+	# display used config file
+	info "Using configuration file ${FILE_CONF}"
 
   # use defaults from config
   API_KEY=$(read_config "API_KEY")
   USER_ID=$(read_config "USER_ID")
   SOCKS_PROXY=$(read_config "SOCKS_PROXY")
 else
-	# display warning unless --quiet parameter is used
-	[ "${QUIET}" = "false" ] && echo "[Warning] Configuration file missing ${FILE_CONF}"
+	warning "Configuration file missing ${FILE_CONF}"
 fi
 
 # overwrite defaults from config file with more specific command line arguments if provided
@@ -233,11 +338,11 @@ fi
 [ "${ARG_API_KEY}" != "" ] && API_KEY=${ARG_API_KEY}
 
 # check API key and User ID
-[ "${API_KEY}" = "" ] && { echo "[Error] Please provide API key or set it in ${FILE_CONF}"; exit 1; }
-[ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
+[ "${API_KEY}" = "" ] && { alert "Please provide API key or set it in ${FILE_CONF}"; exit 1; }
+[ "${USER_ID}" = "" ] && { alert "Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
 
 # Check for file existence
-[ "${FILE}" != "" ] && [ ! -f "${FILE}" ] && { echo "[Error] File ${FILE} doesn't exist"; exit 1; }
+[ "${FILE}" != "" ] && [ ! -f "${FILE}" ] && { error "File ${FILE} doesn't exist"; exit 1; }
 
 # generate temporary directory
 TMP_DIR=$(mktemp -t -d "telegram-XXXXXXXX")
@@ -309,7 +414,7 @@ case "${TYPE}" in
 
   # position
   "pos") 
-    # extract coordonates
+    # extract coordinates
     LATITUDE=$(echo "${POSITION}" | cut -d',' -f1)
     LONGITUDE=$(echo "${POSITION}" | cut -d',' -f2)
 
@@ -323,10 +428,10 @@ case "${TYPE}" in
   "audio") 
     # if needed, convert audio file
     IS_OPUS=$(file "${FILE}" | grep "Opus audio")
-    command -v ffmpeg >/dev/null 2>&1 && IS_FFMPEG="ok"
+    command -v ffmpeg >/dev/null 2>&1 && IS_FFMPEG="true"
 
     [ "${IS_OPUS}" != "" ] && TMP_AUDIO="${FILE}"
-    [ "${IS_OPUS}" = "" ] && [ "${IS_FFMPEG}" = "ok" ] && ffmpeg -i "${FILE}" -loglevel quiet -c libopus -ab 64k "${TMP_AUDIO}"
+    [ "${IS_OPUS}" = "" ] && [ "${IS_FFMPEG}" = "true" ] && ffmpeg -i "${FILE}" -loglevel quiet -c libopus -ab 64k "${TMP_AUDIO}"
 
     # if proper audio file
     if [ -f "${TMP_AUDIO}" ]
@@ -336,7 +441,7 @@ case "${TYPE}" in
       ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "https://api.telegram.org/bot${API_KEY}/sendVoice" )
     else
       ARR_OPTIONS=( )
-      [ "${QUIET}" = "false" ] && echo "[Error] FFmpeg absent, Opus conversion impossible"
+      error "FFmpeg absent, Opus conversion impossible install 'ffmpeg'"
     fi
     ;;
 
@@ -352,19 +457,23 @@ then
   RESULT=$(curl "${ARR_OPTIONS[@]}")
 
   # if debug mode, display bot answer
-  if [ "${DEBUG}" = "ok" ]
-  then
-    echo "option : " "${ARR_OPTIONS[@]}"
-    echo "answer : " "${RESULT}"
-  fi
+  debug "Options       : ${ARR_OPTIONS[*]}"
+  debug "TG-API answer : ${RESULT}"
+
+  # checking answer
+  RESULT_CHECK=$(check_telegram_response "${RESULT}")
+  RC=$?
+  [ "$RESULT_CHECK" != "" ] && alert "$(printf "Telegram API failed with: %s\n" "$RESULT_CHECK")"
 
 #  else, nothing, error
 else
-  # display error message unless --quiet parameter is used
-  [ "${QUIET}" = "false" ] && echo "[Error] Nothing to notify"
+  RC=2
+  error "Nothing to notify (return code: ${RC})"
   
 fi
 
 # remove temporary directory
 rm -r "${TMP_DIR}"
 
+debug "Return code: ${RC}"
+exit $RC
