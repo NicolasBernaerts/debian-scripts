@@ -205,7 +205,7 @@ read_from_json() {
 
 check_telegram_response() {
     local _jq_mode=0
-    command -v jq_ >/dev/null 2>&1 && _jq_mode=1
+    command -v jq >/dev/null 2>&1 && _jq_mode=1
     if [ $_jq_mode = 1 ]; then # use jq if available
       debug "Parsing JSON using 'jq'..."
       if [ "$(echo "$1" | jq '.ok')" = 'false' ]; then
