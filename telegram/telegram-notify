@@ -86,7 +86,6 @@ trim() {
 # -------------------------------------------------------
 
 command -v curl >/dev/null 2>&1 || { alert "Please install 'curl'"; exit 1; }
-command -v jq >/dev/null 2>&1 || { alert "Please install 'jq'"; exit 1; }
 
 # -------------------------------------------------------
 #   Unicode icons
