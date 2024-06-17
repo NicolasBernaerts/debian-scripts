@@ -6,7 +6,8 @@
 #  --telegram <title>  : send an telegram message after rsync
 #
 # Revision history :
-#   20/02/2022, V1.0 - Creation by N. Bernaerts 
+#   20/02/2022, v1.0 - Creation by N. Bernaerts 
+#   17/06/2024, v1.1 - Add rsync stats
 # ---------------------------------------------------
 
 # -------------------------------------------------------
@@ -30,31 +31,44 @@ then
 fi
 
 # loop to retrieve arguments
+ARR_PARAM=( "--stats" "-h" )
 while test $# -gt 0
 do
   case "$1" in
     "--telegram") shift; TELEGRAM="$1"; shift; ;;
+    "--stats") shift; ;;
+    "-h") shift; ;;
     *) ARR_PARAM=( "${ARR_PARAM[@]}" "$1" ); shift; ;;
   esac
 done
 
+# temporary file
+TMP_LOG=$(mktemp -t "rsync-XXXXXXXX.log")
+
 # run rsync
 echo "Running : rsync ${ARR_PARAM[@]}"
-/usr/bin/rsync "${ARR_PARAM[@]}"
+/usr/bin/rsync "${ARR_PARAM[@]}" | tee "${TMP_LOG}"
 RSYNC_CODE=$?
 
 # send telegram notification
 if [ "${TELEGRAM}" ]
 then
+	# collect metrics
+        TOTAL_SIZE=$(grep "Total file size" "${TMP_LOG}" | cut -d':' -f2 | xargs)
+        TRANS_SIZE=$(grep "Total transferred file size" "${TMP_LOG}" | cut -d':' -f2 | xargs)
+
 	# set success or failure status
 	[ ${RSYNC_CODE} -eq 0 ] && ARR_PARAM=( "--success" ) || ARR_PARAM=( "--error" )
 
 	# set parameters
-	ARR_PARAM=( "${ARR_PARAM[@]}" "--silent" "--quiet" "--title" "${TELEGRAM}" )
+	ARR_PARAM=( "${ARR_PARAM[@]}" "--silent" "--quiet" "--title" "${TELEGRAM}" "--text" "${TOTAL_SIZE} (${TRANS_SIZE} transfered)" )
 
 	# send telegram notification
 	telegram-notify "${ARR_PARAM[@]}"
 fi
+
+# remove temporary file
+rm "${TMP_LOG}"
 
 # return rsync code
 exit ${RSYNC_CODE}
