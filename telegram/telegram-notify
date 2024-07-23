@@ -370,8 +370,8 @@ if [ "${TITLE}" != "" ]; then
   TITLE="${TITLE//$"\n"/${LINE_BREAK}}"
   TITLE=$(trim "$TITLE")
 
-  [ "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${LINE_BREAK}${TEXT}"
-  [ "${MODE}" = "markdown" ] && TEXT="*${TITLE}*${LINE_BREAK}${LINE_BREAK}${TEXT}"
+  [ "${MODE}" = "html" ] && TEXT="<b>${TITLE}</b>${LINE_BREAK}${TEXT}"
+  [ "${MODE}" = "markdown" ] && TEXT="*${TITLE}*${LINE_BREAK}${TEXT}"
 fi
 
 # if icon defined, include ahead of notification
