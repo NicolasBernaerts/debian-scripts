@@ -8,8 +8,10 @@ If handshake has not been issued for more than 4 minutes, it means that connexio
 Client wireguard service needs to be restarted.
 
 To install this wireguard watchdog client, run following commands as root :
+
     wget -O /usr/local/bin/wireguard-watchdog https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/master/wireguard/wireguard-watchdog
     chmod +x /usr/local/bin/wireguard-watchdog
 
-Then add this line to root crontab :
+Then add this line to root crontab to run the watchdog script every minute :
+
     * * * * * /usr/local/bin/wireguard-watchdog
