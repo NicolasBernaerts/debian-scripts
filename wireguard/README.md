@@ -1,4 +1,4 @@
-## Wireguard
+# Wireguard
 
 Sometimes, wireguard clients may loose connexion to their server and have difficulty to connect back.
 
