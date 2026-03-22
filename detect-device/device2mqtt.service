@@ -3,9 +3,9 @@ Description=Service in charge of starting device2mqtt detection
 After=network.target
 
 [Service]
-Type=oneshot
-RemainAfterExit=no
-ExecStart=/usr/local/bin/device2mqtt --daemon
+Type=simple
+Restart=always
+ExecStart=/usr/local/bin/device2mqtt
 
 [Install]
 WantedBy=multi-user.target
