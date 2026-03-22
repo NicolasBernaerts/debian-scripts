@@ -17,5 +17,6 @@ Then run these commands to declare the service :
     systemctl start device2mqtt.service
 
 To disable the service :
+
     systemctl stop device2mqtt.service
     systemctl disable device2mqtt.service
