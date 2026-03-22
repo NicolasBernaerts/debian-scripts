@@ -1,0 +1,87 @@
+#!/bin/bash
+# ---------------------------------------------------
+#  This script inspect devices on a LAN
+#  and publish the arrival and departure 
+#  thru a MQTT broker
+#  Any device with a mDNS name will be detected
+#  and reported on a MQTT topic
+#
+# Revision history :
+#   22/03/2026, v1.0 - Creation by N. Bernaerts
+#
+# ---------------------------------------------------
+
+# global parameters
+TIMEOUT=60
+TMP_DATABASE="/tmp/device2mqtt.db"
+
+# local parameters
+NETMASK=""
+MQTT_SERVER=""
+MQTT_PORT=""
+MQTT_USER=""
+MQTT_PASSWORD=""
+MQTT_TOPIC=""
+
+# check tools availability
+command -v nmap >/dev/null 2>&1 || { echo "[error] Please install nmap"; exit 1; }
+
+# main infinite loop
+while true
+do
+  # create database and set timestamp
+  [ ! -f "${TMP_DATABASE}" ] && touch "${TMP_DATABASE}"
+  TIMESTAMP=$(date "+%s")
+
+  # look for new device
+echo "step 1"
+  ARR_DEVICE=( $(nmap -sPn "${NETMASK}" | grep "Nmap scan" | grep "(" | cut -d' ' -f5-6 | tr -d "()" | tr ' ' ';') )
+  for DEVICE in "${ARR_DEVICE[@]}"
+  do
+    # if newly detected
+    NAME=$(echo "${DEVICE}" | cut -d';' -f1)
+    IS_KNOWN=$(grep "^${NAME};" "${TMP_DATABASE}")
+    if [ "${IS_KNOWN}" = "" ]
+    then
+      # add to database and publish detection
+      echo "${DEVICE};${TIMESTAMP}" >> "${TMP_DATABASE}"
+      mosquitto_pub -h "${MQTT_SERVER}" -p ${MQTT_PORT} -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${MQTT_TOPIC}/${NAME}" -m "ON"
+    fi
+  done
+
+  # check devices
+echo "step 2"
+  ARR_DEVICE=( $(cat "${TMP_DATABASE}" | cut -d';' -f1,2) )
+  for DEVICE in "${ARR_DEVICE[@]}"
+  do
+    # if device is reachable
+    ADDRESS=$(echo "${DEVICE}" | cut -d';' -f2)
+    IS_ABSENT=$(ping -c 1 "${ADDRESS}" | grep "error")
+    if [ "${IS_ABSENT}" = "" ]
+    then
+      # declare new timestamp
+      sed -i "/^${DEVICE};.*/d" "${TMP_DATABASE}"
+      echo "${DEVICE};${TIMESTAMP}" >> "${TMP_DATABASE}"
+    fi
+  done
+  
+  # detect devices which have left
+echo "step 3"
+  ARR_DEVICE=( $(cat "${TMP_DATABASE}" | cut -d';' -f1,3) )
+  for DEVICE in "${ARR_DEVICE[@]}"
+  do
+    # if timeout is reached
+    DETECTION=$(echo "${DEVICE}" | cut -d';' -f2)
+    DELAY=$((TIMESTAMP - DETECTION))
+    if [ ${DELAY} -gt ${TIMEOUT} ]
+    then
+      # remove device from database and publish exit
+      NAME=$(echo "${DEVICE}" | cut -d';' -f1)
+      sed -i "/^${NAME};.*/d" "${TMP_DATABASE}"
+      mosquitto_pub -h "${MQTT_SERVER}" -p ${MQTT_PORT} -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${MQTT_TOPIC}/${NAME}" -m "OFF"
+    fi
+  done
+  
+  # wait 1 second
+  sleep 1
+done
