@@ -6,9 +6,11 @@ It detects all new devices on a LAN which provides a mDNS name.
 It publishes new devices and lost device thru MQTT.
 That allow a very simple presence detection thru smartphone for example.
 
-To install, download files to :
-  * /usr/local/bin/device2mqtt
-  * /etc/systemd/system/device2mqtt.service
+To install :
+
+    wget -O /usr/local/bin/device2mqtt https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/refs/heads/master/detect-device/device2mqtt
+    chmod +x /usr/local/bin/device2mqtt
+    wget -O /etc/systemd/system/device2mqtt.service https://raw.githubusercontent.com/NicolasBernaerts/debian-scripts/refs/heads/master/detect-device/device2mqtt.service
 
 Then run these commands to declare the service :
 
