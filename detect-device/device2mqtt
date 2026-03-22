@@ -6,6 +6,12 @@
 #  Any device with a mDNS name will be detected
 #  and reported on a MQTT topic
 #
+#  MQTT will look like :
+#    home/device/Pixel-Nicolas.lan ON
+#    home/device/Pixel-Nicolas.lan OFF
+#    home/device/Pixel-Nicolas.lan ON
+#    home/device/Pixel-Nicolas.lan OFF
+#
 # Revision history :
 #   22/03/2026, v1.0 - Creation by N. Bernaerts
 #
