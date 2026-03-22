@@ -5,6 +5,8 @@
 #  thru a MQTT broker
 #  Any device with a mDNS name will be detected
 #  and reported on a MQTT topic
+#  You just need to adapt local parameters
+#  to your environment
 #
 #  MQTT will look like :
 #    home/device/Pixel-Nicolas.lan ON
@@ -22,12 +24,12 @@ TIMEOUT=60
 TMP_DATABASE="/tmp/device2mqtt.db"
 
 # local parameters
-NETMASK=""
-MQTT_SERVER=""
-MQTT_PORT=""
-MQTT_USER=""
-MQTT_PASSWORD=""
-MQTT_TOPIC=""
+NETMASK="192.168.1.0/24"
+MQTT_SERVER="your.mqtt.server"
+MQTT_PORT="1883"
+MQTT_USER="your-user"
+MQTT_PASSWORD="your-password"
+MQTT_TOPIC="home/device"
 
 # check tools availability
 command -v nmap >/dev/null 2>&1 || { echo "[error] Please install nmap"; exit 1; }
