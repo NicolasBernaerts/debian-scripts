@@ -1,5 +1,7 @@
 #!/bin/bash
 # ---------------------------------------------------
+#  /usr/local/bin/device2mqtt
+#
 #  This script inspect devices on a LAN
 #  and publish the arrival and departure 
 #  thru a MQTT broker
@@ -14,7 +16,7 @@
 #    home/device/Pixel-Nicolas.lan ON
 #    home/device/Pixel-Nicolas.lan OFF
 #
-# Revision history :
+#  Revision history :
 #   22/03/2026, v1.0 - Creation by N. Bernaerts
 #
 # ---------------------------------------------------
