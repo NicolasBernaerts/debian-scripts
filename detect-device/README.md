@@ -2,9 +2,17 @@ Device2MQTT
 ===========
 
 This script should be run as a service.
+
 It detects all new devices on a LAN which provides a mDNS name.
-It publishes new devices and lost device thru MQTT.
-That allow a very simple presence detection thru smartphone for example.
+
+It publishes new devices and lost device thru MQTT :
+
+    paris/device/Pixel-Nicolas ON
+    paris/device/nicolas-ZenBook-UX425QA-UM425QA ON
+    paris/device/iPhone ON
+    paris/device/nicolas-ZenBook-UX425QA-UM425QA OFF
+
+It allows for example a very simple presence detection thru your smartphone name.
 
 To install :
 
