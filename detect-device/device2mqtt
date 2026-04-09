@@ -117,7 +117,7 @@ do
     fi
   done
 
-  # wait 1 second
+  # wait for 5 seconds
   echo -ne "\\ \r" >&2
   sleep 5
 done
