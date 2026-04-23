@@ -22,6 +22,7 @@
 #    31/01/2023, v2.3 - Fix for image and document sending, thanks to jacklul
 #    01/02/2023, v2.4 - Add --debug and --position option, idea from z3r0l1nk
 #    03/02/2023, v2.5 - Add --audio option and code rewrite
+#    27/10/2024, v2.6 - Add --thread option (message_thread_id)
 # ---------------------------------------------------
 
 # initialise variables
@@ -299,6 +300,7 @@ do
     "--quiet") QUIET="true"; shift; ;;
     "--config") shift; FILE_CONF="$1"; shift; ;;
     "--user") shift; ARG_USER_ID="$1"; shift; ;;
+    "--thread") shift; ARG_THREAD_ID="$1"; shift; ;;
     "--key") shift; ARG_API_KEY="$1"; shift; ;;
     "--success") ICON=$(get_unicode_string "\U2705"); shift; ;;
     "--warning") ICON=$(get_unicode_string "\U26A0"); shift; ;;
@@ -329,6 +331,7 @@ then
   # use defaults from config
   API_KEY=$(read_config "API_KEY")
   USER_ID=$(read_config "USER_ID")
+  THREAD_ID=$(read_config "THREAD_ID")
   SOCKS_PROXY=$(read_config "SOCKS_PROXY")
 else
 	warning "Configuration file missing ${FILE_CONF}"
@@ -336,6 +339,7 @@ fi
 
 # overwrite defaults from config file with more specific command line arguments if provided
 [ "${ARG_USER_ID}" != "" ] && USER_ID=${ARG_USER_ID}
+[ "${ARG_THREAD_ID}" != "" ] && THREAD_ID=${ARG_THREAD_ID}
 [ "${ARG_API_KEY}" != "" ] && API_KEY=${ARG_API_KEY}
 
 # check API key and User ID
@@ -386,6 +390,9 @@ ARR_OPTIONS=( "--silent" "--insecure" )
 
 # if needed, socks5 option
 [ "${SOCKS_PROXY}" != "" ] && ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--socks5-hostname" "${SOCKS_PROXY}" )
+
+# add thread_id, if defined 
+[ "${THREAD_ID}" != "" ] && ARR_OPTIONS=( "${ARR_OPTIONS[@]}" "--data" "message_thread_id=${THREAD_ID}" )
 
 case "${TYPE}" in
 
@@ -454,6 +461,7 @@ esac
 # if there is a message to send
 if [ ${#ARR_OPTIONS[@]} -gt 0 ]
 then
+  echo curl "${ARR_OPTIONS[@]}"
   # send message
   RESULT=$(curl "${ARR_OPTIONS[@]}")
 
