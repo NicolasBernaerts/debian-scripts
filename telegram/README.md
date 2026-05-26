@@ -466,5 +466,6 @@ From the header of `telegram-notify`:
 
 ## 12. License
 
-The scripts are published under the original author's repository terms
-(see <https://github.com/NicolasBernaerts/debian-scripts>).
+The scripts are published under the original author's repository terms (see <https://github.com/NicolasBernaerts/debian-scripts>).
+
+This great documentation has been written by [@tzumbrunnen](https://github.com/tzumbrunnen)
